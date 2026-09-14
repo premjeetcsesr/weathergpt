@@ -14,7 +14,7 @@
 - **Provider Abstraction**: Decoupled weather provider interface (`BaseWeatherProvider`) with an asynchronous **OpenWeatherMap** integration.
 - **Data Normalization**: Translates raw provider responses into standardized domain schemas (`WeatherResponse`, `ForecastResponse`) with unit converters and AQI categorization.
 - **Hallucination-Proof AI Assistant**: Provider-agnostic LLM interface with system-prompt constraints grounded strictly in real-time verified weather facts, plus a deterministic NLG fallback if an LLM key is absent.
-- **Resilient Database Layer**: Optional **SQLAlchemy 2.0 (async)** with PostgreSQL models (`User`, `SearchHistory`, `ChatHistory`, `FavoriteLocation`), with graceful degradation if no database is connected.
+- **MongoDB Async Integration (Motor)**: Native async MongoDB layer powering **Users & Auth (JWT + Bcrypt)**, **Chat History & Multi-turn Sessions**, **Saved / Favorite Locations (Geospatial 2dsphere)**, and **Weather Search & Telemetry History**.
 - **In-Memory Caching**: Configurable TTL cache for current weather to minimize external API roundtrips.
 - **Structured Observability**: Request-level logging with execution duration, endpoint sanitization, and unified error handling.
 
@@ -284,35 +284,27 @@ GET /api/v1/alerts?city=Kanpur
 }
 ```
 
-### 6. AI Weather Assistant
+### 6. AI Weather Assistant & Chat History
+- `POST /api/v1/chat` : Process conversational message & automatically persist to MongoDB `chat_history`.
+- `GET /api/v1/chat/history?session_id=...` : Fetch conversation history by session or user.
+- `GET /api/v1/chat/sessions` : Fetch distinct conversation sessions with last message & time.
+- `DELETE /api/v1/chat/history?session_id=...` : Clear conversation history.
 
-```http
-POST /api/v1/chat
-Content-Type: application/json
+### 7. User Authentication & Preferences (MongoDB)
+- `POST /api/v1/auth/register` : Register a new user with password hashing (Bcrypt) & personalized preferences.
+- `POST /api/v1/auth/login` : Login with username/email & password to obtain JWT Bearer token.
+- `GET /api/v1/auth/me` : Retrieve authenticated user profile.
+- `PUT /api/v1/auth/preferences` : Update user preferences (°C/°F, dark/light theme, language, default city).
 
-{
-  "message": "Will it rain in Kanpur tomorrow?",
-  "location": "Kanpur"
-}
-```
+### 8. Saved & Favorite Locations (MongoDB Geospatial)
+- `POST /api/v1/locations/saved` : Save a favorite location with coordinates, tags (Home, Work, Travel).
+- `GET /api/v1/locations/saved` : Retrieve user's bookmarked locations.
+- `DELETE /api/v1/locations/saved/{location_id}` : Delete saved location bookmark.
 
-**Response Example:**
-```json
-{
-  "message": "Rain is likely in Kanpur tomorrow with a 70% precipitation chance. You should carry an umbrella.",
-  "weather_context": {
-    "temperature": 30.0,
-    "feels_like": 33.0,
-    "condition": "Partly Cloudy",
-    "rain_probability": 70,
-    "humidity": 78,
-    "wind_speed": 16.0,
-    "air_quality_label": "Moderate"
-  },
-  "location": "Kanpur",
-  "source": "weathergpt_ai"
-}
-```
+### 9. Weather Search & Telemetry History (MongoDB)
+- `GET /api/v1/weather/history` : Fetch past weather inquiries with full telemetry metrics.
+- `GET /api/v1/weather/history/popular` : Retrieve top trending & most frequently searched cities.
+- `DELETE /api/v1/weather/history` : Clear search telemetry logs.
 
 ---
 
@@ -324,7 +316,7 @@ Run the comprehensive pytest test suite:
 pytest -v
 ```
 
-All 12 automated test cases verify health probes, weather normalization, forecast aggregation, location geocoding, error boundaries, and AI chat grounding without requiring external API access.
+All 24 automated test cases verify health probes, weather normalization, forecast aggregation, location geocoding, error boundaries, AI chat grounding, user authentication (JWT + Bcrypt), MongoDB chat history, saved locations CRUD, and weather telemetry analytics.
 
 ---
 

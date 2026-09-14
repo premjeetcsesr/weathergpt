@@ -51,13 +51,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         endpoint_str = f"{path}?{sanitized_query}" if sanitized_query else path
 
+        req_id = getattr(request.state, "request_id", "")
+        req_prefix = f"[{req_id}] " if req_id else ""
+
         try:
             response = await call_next(request)
             duration_ms = (time.perf_counter() - start_time) * 1000
             status_code = response.status_code
 
             log_message = (
-                f"{method} {endpoint_str} -> {status_code} ({duration_ms:.2f}ms)"
+                f"{req_prefix}{method} {endpoint_str} -> {status_code} ({duration_ms:.2f}ms)"
             )
             if status_code >= 500:
                 logger.error(log_message)

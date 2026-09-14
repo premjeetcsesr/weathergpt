@@ -9,7 +9,13 @@ from app.api.routes import health
 from app.core.config import get_settings
 from app.core.exceptions import AppException
 from app.core.logging import RequestLoggingMiddleware, logger, setup_logging
+from app.core.middleware import (
+    CorrelationIdMiddleware,
+    RateLimiterMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.db.database import init_db
+from app.db.mongodb import close_mongo_db, init_mongo_db
 
 settings = get_settings()
 
@@ -20,8 +26,60 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(debug=settings.DEBUG)
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
     await init_db()
+    db = await init_mongo_db()
+
+    # Initialize Step 4 Alert Monitor background worker if MongoDB is available
+    if db is not None:
+        try:
+            from app.db.mongo_repositories import (
+                MongoAlertRepository,
+                MongoAlertSubscriptionRepository,
+                MongoNotificationHistoryRepository,
+            )
+            from app.providers.weather_provider import OpenWeatherMapProvider
+            from app.services.alert_monitor import AlertMonitor
+            from app.services.alert_service import AlertService
+            from app.services.notification_service import NotificationService
+            from app.services.websocket_manager import get_websocket_manager
+
+            alert_repo = MongoAlertRepository(db=db)
+            sub_repo = MongoAlertSubscriptionRepository(db=db)
+            notif_hist_repo = MongoNotificationHistoryRepository(db=db)
+            provider = OpenWeatherMapProvider(settings=settings)
+            alert_service = AlertService(provider=provider, alert_repo=alert_repo, settings=settings)
+            ws_mgr = get_websocket_manager()
+            notif_service = NotificationService(ws_manager=ws_mgr, history_repo=notif_hist_repo)
+
+            monitor = AlertMonitor(
+                alert_service=alert_service,
+                subscription_repo=sub_repo,
+                notification_service=notif_service,
+                settings=settings,
+            )
+            monitor.start()
+            app.state.alert_monitor = monitor
+            logger.info("AlertMonitor background task started successfully.")
+        except Exception as exc:
+            logger.error(f"Failed to start AlertMonitor on startup: {exc}")
+
     yield
+
+    # Graceful shutdown: stop background monitoring task
+    monitor = getattr(app.state, "alert_monitor", None)
+    if monitor:
+        await monitor.stop()
+
+    # Close active WebSocket connections
+    try:
+        from app.services.websocket_manager import get_websocket_manager
+        ws_mgr = get_websocket_manager()
+        await ws_mgr.disconnect_all()
+    except Exception as exc:
+        logger.warning(f"Error closing WebSocket connections: {exc}")
+
+    await close_mongo_db()
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
+
 
 
 app = FastAPI(
@@ -38,7 +96,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
+# 1. Security Headers Middleware (Applies to all HTTP responses)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Correlation ID Middleware (Ensures X-Request-ID propagation)
+app.add_middleware(CorrelationIdMiddleware)
+
+# 3. Rate Limiting Middleware (Protects sensitive endpoints from abuse)
+app.add_middleware(RateLimiterMiddleware)
+
+# 4. CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -47,7 +114,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom Request Logging Middleware
+# 5. Custom Request Logging Middleware
 app.add_middleware(RequestLoggingMiddleware)
 
 

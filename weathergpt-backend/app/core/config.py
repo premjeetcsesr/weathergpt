@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import List, Union
+from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,14 +21,70 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    LOG_LEVEL: str = "INFO"
+
+    @field_validator("DEBUG", mode="after")
+    @classmethod
+    def enforce_production_debug(cls, v: bool, info) -> bool:
+        env = info.data.get("ENVIRONMENT", "development")
+        if str(env).lower() == "production":
+            return False
+        return v
 
     # External Weather Provider (OpenWeatherMap)
     WEATHER_API_KEY: str = ""
     WEATHER_API_BASE_URL: str = "https://api.openweathermap.org/data/2.5"
     GEOCODING_API_BASE_URL: str = "https://api.openweathermap.org/geo/1.0"
 
-    # Database
+    # Official IMD Provider & Advanced Intelligence (Step 7)
+    IMD_API_BASE_URL: Optional[str] = None
+    IMD_API_KEY: Optional[str] = None
+    DEFAULT_WEATHER_PROVIDER: str = "openweather"
+    ENABLE_IMD_PROVIDER: bool = True
+    ENABLE_NWP_PROVIDER: bool = False
+    ENABLE_RADAR_PROVIDER: bool = False
+    ENABLE_SATELLITE_PROVIDER: bool = False
+
+    # Doppler Weather Radar Provider (IMD / Authorized Network)
+    IMD_RADAR_ENABLED: bool = False
+    IMD_RADAR_BASE_URL: Optional[str] = None
+    IMD_RADAR_API_KEY: Optional[str] = None
+
+    # Meteorological Satellite Provider (INSAT-3D / 3DR / 3DS)
+    IMD_SATELLITE_ENABLED: bool = False
+    IMD_SATELLITE_BASE_URL: Optional[str] = None
+    IMD_SATELLITE_API_KEY: Optional[str] = None
+
+    # Proxy Whitelist for SSRF Defense
+    ALLOWED_TILE_PROXY_HOSTS: List[str] = [
+        "tile.openweathermap.org",
+        "mausam.imd.gov.in",
+        "satellite.imd.gov.in",
+        "mosdac.gov.in",
+        "bhuvan.nrsc.gov.in",
+    ]
+
+    # Database (PostgreSQL optional & MongoDB)
     DATABASE_URL: str = ""
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_URI: str = ""
+    MONGODB_DB_NAME: str = "weathergpt"
+
+    @property
+    def effective_mongodb_url(self) -> str:
+        return self.MONGODB_URI if self.MONGODB_URI else self.MONGODB_URL
+
+    # Authentication & Security
+    JWT_SECRET_KEY: str = "weathergpt-secret-key-super-secure-production-ready-2026"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+
+    # Rate Limiting (Step 8)
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = 5
+    RATE_LIMIT_REGISTER_PER_MINUTE: int = 5
+    RATE_LIMIT_CHAT_PER_MINUTE: int = 30
+    RATE_LIMIT_WEATHER_PER_MINUTE: int = 60
 
     # LLM Settings (OpenAI-compatible)
     LLM_API_KEY: str = ""
@@ -58,7 +114,18 @@ class Settings(BaseSettings):
 
     # Caching & Timeouts
     CACHE_TTL_SECONDS: int = 300  # 5 minutes
+    WEATHER_CACHE_TTL: int = 300
     HTTP_TIMEOUT_SECONDS: float = 10.0
+
+    # Step 4 Real-Time Alerts & WebSocket
+    ALERT_CHECK_INTERVAL_SECONDS: int = 300
+    WEBSOCKET_ENABLED: bool = True
+    MAX_WS_CONNECTIONS: int = 100
+    MONGODB_DATABASE: Optional[str] = None
+
+    @property
+    def effective_db_name(self) -> str:
+        return self.MONGODB_DATABASE or self.MONGODB_DB_NAME or "weathergpt"
 
 
 @lru_cache()

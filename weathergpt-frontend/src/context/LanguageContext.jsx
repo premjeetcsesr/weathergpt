@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { languages, translations } from '../data/translations';
+import { getLanguagePreference, updateLanguagePreference } from '../services/settingsApi';
 
 const LanguageContext = createContext();
 
@@ -8,9 +9,30 @@ export function LanguageProvider({ children }) {
     return localStorage.getItem('weathergpt_lang') || 'en';
   });
 
+  // On mount, optionally sync with backend preference if available
   useEffect(() => {
-    localStorage.setItem('weathergpt_lang', currentLanguage);
-  }, [currentLanguage]);
+    getLanguagePreference().then((res) => {
+      if (res && res.language && res.language !== currentLanguage) {
+        // Respect saved preference if backend has updated one
+        if (!localStorage.getItem('weathergpt_lang')) {
+          setCurrentLanguage(res.language);
+          localStorage.setItem('weathergpt_lang', res.language);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const changeLanguage = async (newLang) => {
+    setCurrentLanguage(newLang);
+    localStorage.setItem('weathergpt_lang', newLang);
+    try {
+      await updateLanguagePreference(newLang);
+    } catch (e) {
+      console.warn('Could not sync language to backend:', e);
+    }
+  };
+
+  const speechLocale = currentLanguage === 'hi' ? 'hi-IN' : 'en-IN';
 
   /**
    * Translate helper
@@ -33,7 +55,8 @@ export function LanguageProvider({ children }) {
     <LanguageContext.Provider
       value={{
         currentLanguage,
-        setLanguage: setCurrentLanguage,
+        setLanguage: changeLanguage,
+        speechLocale,
         languages,
         t,
       }}

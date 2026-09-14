@@ -1,38 +1,33 @@
 import React, { useState } from 'react';
-import { Send, Mic, MicOff, MapPin, Sparkles } from 'lucide-react';
+import { Send, MapPin, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWeather } from '../../context/WeatherContext';
+import { VoiceInput } from '../VoiceInput';
 
 export function ChatInput({ onSendMessage, suggestedPrompts = [], disabled = false }) {
   const [inputText, setInputText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const { selectedCity } = useWeather();
 
   const handleSend = (e) => {
     e?.preventDefault();
     if (inputText.trim() && !disabled) {
-      onSendMessage(inputText.trim());
+      onSendMessage(inputText.trim(), { input_mode: 'text' });
       setInputText('');
     }
   };
 
   const handlePromptClick = (prompt) => {
     if (!disabled) {
-      onSendMessage(prompt);
+      onSendMessage(prompt, { input_mode: 'text' });
     }
   };
 
-  const toggleMic = () => {
-    if (isRecording) {
-      setIsRecording(false);
-    } else {
-      setIsRecording(true);
-      // Simulate speech-to-text recognition
-      setTimeout(() => {
-        setInputText(`What is the rain probability in ${selectedCity} for the next 24 hours?`);
-        setIsRecording(false);
-      }, 2500);
+  const handleVoiceTranscript = (spokenText) => {
+    if (spokenText && spokenText.trim() && !disabled) {
+      setInputText(spokenText);
+      onSendMessage(spokenText.trim(), { input_mode: 'voice' });
+      setInputText('');
     }
   };
 
@@ -90,23 +85,16 @@ export function ChatInput({ onSendMessage, suggestedPrompts = [], disabled = fal
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           disabled={disabled}
-          placeholder={isRecording ? t('listening') : t('chatInputPlaceholder')}
+          placeholder={
+            currentLanguage === 'hi'
+              ? 'मौसम के बारे में पूछें या माइक दबाकर बोलें...'
+              : t('chatInputPlaceholder') || 'Ask about weather or tap mic to speak...'
+          }
           className="flex-1 px-3 py-2 bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none disabled:opacity-50"
         />
 
-        {/* Microphone Simulation Button */}
-        <button
-          type="button"
-          onClick={toggleMic}
-          className={`p-2 rounded-xl transition-all ${
-            isRecording
-              ? 'bg-red-500 text-white animate-pulse'
-              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-          title={isRecording ? 'Listening...' : 'Voice Input'}
-        >
-          {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-        </button>
+        {/* Real-time Voice Input Button */}
+        <VoiceInput onTranscript={handleVoiceTranscript} disabled={disabled} />
 
         {/* Send Button */}
         <button

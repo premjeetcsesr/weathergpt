@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useWeather } from '../context/WeatherContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Settings as SettingsIcon, 
   Globe, 
@@ -12,13 +13,18 @@ import {
   Palette, 
   Check, 
   Save, 
-  MapPin 
+  MapPin,
+  User,
+  ShieldCheck,
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 
 export function Settings() {
   const { currentLanguage, setLanguage, languages, t } = useLanguage();
   const { tempUnit, setTempUnit, windUnit, setWindUnit, selectedCity, searchCity } = useWeather();
   const { theme, setTheme } = useTheme();
+  const { user, isAuthenticated, openAuthModal, logout, updatePreferences } = useAuth();
 
   const [pushAlerts, setPushAlerts] = useState(true);
   const [morningDigest, setMorningDigest] = useState(true);
@@ -27,11 +33,27 @@ export function Settings() {
   const [defaultCityInput, setDefaultCityInput] = useState(selectedCity);
   const [showSavedToast, setShowSavedToast] = useState(false);
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    if (user?.preferences?.default_city) {
+      setDefaultCityInput(user.preferences.default_city);
+    }
+  }, [user]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (defaultCityInput.trim()) {
       searchCity(defaultCityInput.trim());
     }
+
+    if (isAuthenticated) {
+      await updatePreferences({
+        unit: tempUnit === 'C' ? 'celsius' : 'fahrenheit',
+        language: currentLanguage,
+        default_city: defaultCityInput.trim() || 'Kanpur',
+        theme: theme === 'system' ? 'dark' : theme,
+      });
+    }
+
     setShowSavedToast(true);
     setTimeout(() => setShowSavedToast(false), 3000);
   };
@@ -59,6 +81,64 @@ export function Settings() {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-500 text-white text-xs font-semibold shadow-glow animate-bounce">
             <Check className="w-4 h-4" />
             <span>{t('savedSuccess')}</span>
+          </div>
+        )}
+      </div>
+
+      {/* User Account & MongoDB Sync Card */}
+      <div className="rounded-3xl p-6 bg-gradient-to-br from-brand-500/10 via-sky-500/5 to-white dark:to-slate-900 border border-brand-200/60 dark:border-brand-900/60 shadow-card">
+        {isAuthenticated && user ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-sky-400 text-white text-lg font-bold flex items-center justify-center shadow-md">
+                {user.full_name ? user.full_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {user.full_name || user.username}
+                  </h3>
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <ShieldCheck className="w-3 h-3" /> MongoDB Connected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={logout}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Sync with MongoDB Cloud
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Sign in or create an account to save chat history, favorite locations & custom alerts.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openAuthModal('login')}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-600 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white rounded-2xl text-xs font-semibold shadow-glow transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Sign In / Register</span>
+            </button>
           </div>
         )}
       </div>

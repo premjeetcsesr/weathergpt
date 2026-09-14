@@ -4,10 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.logging import logger
+from app.db.mongo_repositories import MongoChatHistoryRepository
 from app.db.repositories import HistoryRepository
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.alert_service import AlertService
 from app.services.forecast_service import ForecastService
+from app.services.language_service import LanguageService
 from app.services.llm_service import LLMService
 from app.services.weather_service import WeatherService
 from app.utils.intent_parser import (
@@ -57,7 +59,7 @@ class ChatService:
     """
     Orchestration layer for conversational AI weather intelligence.
     Extracts intents/locations, queries verified backend services, builds context,
-    invokes LLMService, and logs conversation history.
+    invokes LLMService, and logs conversation history to MongoDB and relational DB.
     """
 
     def __init__(
@@ -66,21 +68,30 @@ class ChatService:
         forecast_service: ForecastService,
         alert_service: AlertService,
         llm_service: LLMService,
+        chat_repo: Optional[MongoChatHistoryRepository] = None,
+        warning_service: Optional[Any] = None,
+        advisory_service: Optional[Any] = None,
         settings: Optional[Settings] = None,
     ):
         self.weather_service = weather_service
         self.forecast_service = forecast_service
         self.alert_service = alert_service
         self.llm_service = llm_service
+        self.chat_repo = chat_repo
+        self.warning_service = warning_service
+        self.advisory_service = advisory_service
         self.settings = settings or get_settings()
 
     async def process_chat_message(
         self,
         request: ChatRequest,
         db: Optional[AsyncSession] = None,
+        user_id: Optional[str] = None,
+        chat_repo: Optional[MongoChatHistoryRepository] = None,
     ) -> ChatResponse:
         """
         Main pipeline to process user message and return context-grounded AI weather response.
+        Persists chat turn into MongoDB chat_history collection.
         """
         raw_message = request.message.strip()
         conv_id = request.conversation_id
@@ -88,7 +99,16 @@ class ChatService:
         session_location = session_data.get("location") if session_data else None
 
         # 1. Parse linguistic properties & intent
-        language = detect_language(raw_message, requested_lang=request.language)
+        lang_detection = LanguageService.detect_language(raw_message, user_preference=request.language)
+        detected_lang = lang_detection.get("language", "en")
+        if request.language in ("en", "hi"):
+            if detected_lang == "hi" and any(0x0900 <= ord(c) <= 0x097F for c in raw_message):
+                language = "hi"
+            else:
+                language = request.language
+        else:
+            language = detected_lang
+
         intent = detect_intent(raw_message)
         time_target = extract_time_target(raw_message)
 
@@ -110,6 +130,7 @@ class ChatService:
             )
             return ChatResponse(
                 success=True,
+                reply=prompt_msg,
                 message=prompt_msg,
                 intent="missing_location",
                 location=None,
@@ -169,14 +190,32 @@ class ChatService:
                 except Exception as e:
                     logger.warning(f"Could not retrieve forecast telemetry for {resolved_city_name}: {e}")
 
-            # C. Fetch alerts if intent is alert-related
-            if intent == "weather_alert":
-                try:
-                    alerts_resp = await self.alert_service.get_alerts(city=resolved_city_name)
-                    weather_ctx["alerts"] = alerts_resp.alerts
-                except Exception as e:
-                    logger.warning(f"Could not retrieve alerts for {resolved_city_name}: {e}")
-                    weather_ctx["alerts"] = []
+            # C. Fetch alerts & official warnings
+            msg_lower = raw_message.lower()
+            if intent == "weather_alert" or "warning" in msg_lower or "alert" in msg_lower or "travel" in msg_lower or "safe" in msg_lower:
+                if self.warning_service:
+                    try:
+                        warn_resp = await self.warning_service.get_official_warnings(city=resolved_city_name)
+                        weather_ctx["alerts"] = [w.model_dump() for w in warn_resp.warnings]
+                        weather_ctx["highest_warning_severity"] = warn_resp.highest_severity
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve warnings from warning_service for {resolved_city_name}: {e}")
+                elif self.alert_service:
+                    try:
+                        alerts_resp = await self.alert_service.get_alerts(city=resolved_city_name)
+                        weather_ctx["alerts"] = alerts_resp.alerts
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve alerts for {resolved_city_name}: {e}")
+                        weather_ctx["alerts"] = []
+
+            # D. Fetch advisories if travel or risk inquiry
+            if "travel" in msg_lower or "precaution" in msg_lower or "safe" in msg_lower or "umbrella" in msg_lower:
+                if self.advisory_service:
+                    try:
+                        adv_resp = await self.advisory_service.get_actionable_advisories(city=resolved_city_name)
+                        weather_ctx["advisories"] = [a.headline for a in adv_resp.advisories]
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve advisories for {resolved_city_name}: {e}")
 
         except Exception as exc:
             logger.error(f"Weather provider error retrieving telemetry for '{detected_loc}': {exc}")
@@ -187,6 +226,7 @@ class ChatService:
             )
             return ChatResponse(
                 success=False,
+                reply=error_msg,
                 message=error_msg,
                 intent=intent,
                 location=detected_loc,
@@ -208,11 +248,30 @@ class ChatService:
             time_target=time_target,
         )
 
-        # 6. Update session tracking
+        # 6. Update session tracking in-memory
         if conv_id:
             conversation_store.update_session(conv_id, location=resolved_city_name, intent=intent)
 
-        # 7. Persist to DB if session provided
+        # 7. Persist to MongoDB chat_history collection
+        active_chat_repo = chat_repo or self.chat_repo
+        if active_chat_repo is not None:
+            try:
+                await active_chat_repo.log_chat_turn(
+                    message=raw_message,
+                    response=ai_response_text,
+                    location=resolved_city_name,
+                    session_id=conv_id,
+                    user_id=user_id,
+                    intent=intent,
+                    language=language,
+                    weather_context=weather_ctx,
+                    input_mode=request.input_mode or "text",
+                )
+                logger.debug(f"Chat turn logged to MongoDB for session '{conv_id}'")
+            except Exception as e:
+                logger.warning(f"MongoDB chat logging failed: {e}")
+
+        # 8. Optional fallback SQL DB persist
         if db is not None:
             try:
                 repo = HistoryRepository(db)
@@ -223,11 +282,12 @@ class ChatService:
                     session_id=conv_id,
                 )
             except Exception as e:
-                logger.debug(f"Chat history database logging skipped: {e}")
+                logger.debug(f"SQL chat history database logging skipped: {e}")
 
-        # 8. Return structured response
+        # 9. Return structured response
         return ChatResponse(
             success=True,
+            reply=ai_response_text,
             message=ai_response_text,
             intent=intent,
             location=resolved_city_name,
@@ -236,5 +296,5 @@ class ChatService:
             ai_generated=is_ai_generated,
             data=weather_ctx,
             weather_context=weather_ctx,
-            source="weathergpt_ai" if is_ai_generated else "weathergpt_nlg_fallback",
+            source="weather_context",
         )

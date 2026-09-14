@@ -9,7 +9,7 @@ import { Bot, Sparkles, Zap, ShieldCheck } from 'lucide-react';
 
 export function Assistant() {
   const { selectedCity, weatherData } = useWeather();
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const locationState = useLocation();
 
   const [messages, setMessages] = useState(() => {
@@ -38,21 +38,26 @@ export function Assistant() {
     }
   }, [locationState.state]);
 
-  const handleSendMessage = async (text) => {
+  const handleSendMessage = async (text, options = {}) => {
     if (!text || !text.trim() || isThinking) return;
 
+    const inputMode = options.input_mode || 'text';
     const userMsg = {
       id: `user-${Date.now()}`,
       sender: 'user',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: text.trim()
+      text: text.trim(),
+      input_mode: inputMode,
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setIsThinking(true);
 
     try {
-      const res = await sendChatMessage(text, selectedCity, weatherData);
+      const res = await sendChatMessage(text, selectedCity, weatherData, {
+        language: currentLanguage,
+        input_mode: inputMode,
+      });
       if (res.success && res.data) {
         setMessages((prev) => [...prev, res.data]);
       }
@@ -64,8 +69,12 @@ export function Assistant() {
           id: `ai-err-${Date.now()}`,
           sender: 'ai',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: "I encountered a momentary issue querying the atmospheric simulation database. Please try your question again."
-        }
+          text:
+            currentLanguage === 'hi'
+              ? 'मौसम सेवा से संपर्क करने में समस्या आई। कृपया पुनः प्रयास करें।'
+              : 'I encountered a momentary issue querying the atmospheric simulation database. Please try your question again.',
+          language: currentLanguage,
+        },
       ]);
     } finally {
       setIsThinking(false);

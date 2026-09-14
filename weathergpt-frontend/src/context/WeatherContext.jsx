@@ -1,6 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getCurrentWeather, getForecast, getWeatherAlerts, getCityByCoordinates } from '../services/weatherApi';
-import { defaultCity } from '../data/mockWeather';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import {
+  getCurrentWeather,
+  getForecast,
+  getWeatherAlerts,
+  getCityByCoordinates,
+  fetchSavedLocations,
+  saveLocationToBackend,
+  deleteSavedLocationFromBackend,
+  defaultCity,
+} from '../services/weatherApi';
+import { useAlertWebSocket } from '../services/useAlertWebSocket';
 
 const WeatherContext = createContext();
 
@@ -16,6 +25,11 @@ export function WeatherProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [savedLocations, setSavedLocations] = useState([]);
+
+  // Active floating alert toast state
+  const [activeToast, setActiveToast] = useState(null);
+  const lastAlertToastIdRef = useRef(null);
 
   // Units: 'C' or 'F' for temperature, 'kmh' or 'mph' for wind
   const [tempUnit, setTempUnit] = useState(() => {
@@ -34,6 +48,34 @@ export function WeatherProvider({ children }) {
       return ['Kanpur', 'New Delhi', 'Mumbai', 'Bengaluru'];
     }
   });
+
+  // Load saved locations from MongoDB
+  const loadSavedLocations = async () => {
+    const res = await fetchSavedLocations();
+    if (res.success) {
+      setSavedLocations(res.items);
+    }
+  };
+
+  useEffect(() => {
+    loadSavedLocations();
+  }, []);
+
+  const addSavedLocation = async (loc) => {
+    const res = await saveLocationToBackend(loc);
+    if (res.success) {
+      await loadSavedLocations();
+    }
+    return res;
+  };
+
+  const removeSavedLocation = async (id) => {
+    const success = await deleteSavedLocationFromBackend(id);
+    if (success) {
+      setSavedLocations((prev) => prev.filter((l) => l.id !== id));
+    }
+    return success;
+  };
 
   // Persist preferences
   useEffect(() => {
@@ -65,8 +107,24 @@ export function WeatherProvider({ children }) {
 
       if (currentRes.success && currentRes.data) {
         setWeatherData(currentRes.data);
+      } else if (city.toLowerCase() !== defaultCity.toLowerCase()) {
+        console.warn(`Weather load failed for ${city}, falling back to default city ${defaultCity}`);
+        const [fallbackCur, fallbackFc] = await Promise.all([
+          getCurrentWeather(defaultCity),
+          getForecast(defaultCity),
+        ]);
+        if (fallbackCur.success && fallbackCur.data) {
+          setWeatherData(fallbackCur.data);
+          setSelectedCity(defaultCity);
+          if (fallbackFc.success) {
+            setHourlyForecast(fallbackFc.hourly || []);
+            setDailyForecast(fallbackFc.daily || []);
+          }
+        } else {
+          throw new Error(currentRes.error || 'Failed to load weather data');
+        }
       } else {
-        throw new Error('Failed to load weather data');
+        throw new Error(currentRes.error || 'Failed to load weather data');
       }
 
       if (forecastRes.success) {
@@ -74,8 +132,22 @@ export function WeatherProvider({ children }) {
         setDailyForecast(forecastRes.daily || []);
       }
 
-      if (alertsRes.success) {
-        setAlerts(alertsRes.alerts || []);
+      if (alertsRes.success && alertsRes.alerts) {
+        setAlerts(alertsRes.alerts);
+        // If active alerts exist for this city, pop up notification toast for the most critical alert
+        if (alertsRes.alerts.length > 0) {
+          const notableAlert = alertsRes.alerts.find((a) =>
+            ['extreme', 'severe', 'moderate'].includes((a.severity || '').toLowerCase())
+          ) || alertsRes.alerts[0];
+
+          const alertKey = notableAlert ? (notableAlert.id || notableAlert.alert_id || `${city}-${notableAlert.event}`) : null;
+          if (alertKey && lastAlertToastIdRef.current !== alertKey) {
+            lastAlertToastIdRef.current = alertKey;
+            setActiveToast(notableAlert);
+          }
+        }
+      } else {
+        setAlerts([]);
       }
     } catch (err) {
       console.error('Weather load error:', err);
@@ -125,7 +197,6 @@ export function WeatherProvider({ children }) {
       (geoError) => {
         console.warn('Geolocation access denied or timed out:', geoError.message);
         setIsLocating(false);
-        // Default to Kanpur or notify
         alert('Could not determine exact location. Showing default city (Kanpur).');
       },
       { timeout: 8000 }
@@ -157,6 +228,53 @@ export function WeatherProvider({ children }) {
     loadCityWeather(selectedCity);
   };
 
+  // Step 4: Real-time alerts WebSocket integration
+  const handleNewAlert = useCallback((newAlert) => {
+    setAlerts((prev) => {
+      const id = newAlert.id || newAlert.alert_id;
+      const exists = prev.some((a) => (a.id || a.alert_id) === id);
+      if (exists) {
+        return prev.map((a) => ((a.id || a.alert_id) === id ? newAlert : a));
+      }
+      return [newAlert, ...prev];
+    });
+    // Trigger toast popup on real-time event
+    setActiveToast(newAlert);
+  }, []);
+
+  const handleAlertExpired = useCallback((expiredId) => {
+    setAlerts((prev) => prev.filter((a) => (a.id || a.alert_id) !== expiredId));
+    setActiveToast((prev) => ((prev?.id || prev?.alert_id) === expiredId ? null : prev));
+  }, []);
+
+  const {
+    status: wsStatus,
+    latestToast: wsToast,
+    dismissToast: dismissWsToast,
+    subscribeCity: wsSubscribeCity,
+  } = useAlertWebSocket({
+    activeCity: selectedCity,
+    onAlertReceived: handleNewAlert,
+    onAlertExpired: handleAlertExpired,
+  });
+
+  // Sync WebSocket toast with activeToast
+  useEffect(() => {
+    if (wsToast) {
+      setActiveToast(wsToast);
+    }
+  }, [wsToast]);
+
+  const triggerAlertToast = useCallback((alertObj) => {
+    if (!alertObj) return;
+    setActiveToast(alertObj);
+  }, []);
+
+  const dismissToast = useCallback(() => {
+    setActiveToast(null);
+    dismissWsToast();
+  }, [dismissWsToast]);
+
   return (
     <WeatherContext.Provider
       value={{
@@ -165,6 +283,12 @@ export function WeatherProvider({ children }) {
         hourlyForecast,
         dailyForecast,
         alerts,
+        wsStatus,
+        latestToast: activeToast,
+        triggerAlertToast,
+        dismissToast,
+        wsSubscribeCity,
+
         loading,
         error,
         isLocating,
@@ -173,6 +297,10 @@ export function WeatherProvider({ children }) {
         windUnit,
         setWindUnit,
         recentSearches,
+        savedLocations,
+        loadSavedLocations,
+        addSavedLocation,
+        removeSavedLocation,
         searchCity,
         useCurrentLocation,
         refreshWeather,

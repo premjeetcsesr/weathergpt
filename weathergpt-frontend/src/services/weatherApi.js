@@ -1,7 +1,7 @@
-import { USE_MOCK_DATA, ENDPOINTS, OPENWEATHER_API_KEY, OPENWEATHER_ENDPOINTS } from './apiConfig';
-import { mockWeatherDatabase, defaultCity } from '../data/mockWeather';
-import { mockAlertsDatabase } from '../data/mockAlerts';
-import { mockClimateData } from '../data/mockClimate';
+import { ENDPOINTS } from './apiConfig';
+import { getAuthHeaders } from './authApi';
+
+export const defaultCity = 'Kanpur';
 
 /**
  * Capitalize first letter of string
@@ -296,310 +296,125 @@ function mapOWMForecast(data) {
 }
 
 /**
- * Fetch current weather from OpenWeatherMap or fallback
+ * Fetch current weather from FastAPI backend
  * @param {string} location - City name
  */
 export async function getCurrentWeather(location = defaultCity) {
-  // If user explicitly configured mock data or no key
-  if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const key = location.toLowerCase().trim();
-    const cityData = mockWeatherDatabase[key] || mockWeatherDatabase[defaultCity.toLowerCase()];
-    return {
-      success: true,
-      data: cityData
-    };
-  }
-
-  // 1. Try Live OpenWeatherMap API
-  if (OPENWEATHER_API_KEY) {
-    try {
-      const url = `${OPENWEATHER_ENDPOINTS.CURRENT_WEATHER}?q=${encodeURIComponent(location)}&units=metric&appid=${OPENWEATHER_API_KEY}`;
-      const response = await fetch(url);
-      
-      if (response.ok) {
-        const rawData = await response.json();
-        const lat = rawData.coord?.lat;
-        const lon = rawData.coord?.lon;
-
-        // Fetch Air Quality in parallel if coordinates are available
-        let airQuality = null;
-        if (lat && lon) {
-          try {
-            const airRes = await fetch(`${OPENWEATHER_ENDPOINTS.AIR_POLLUTION}?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}`);
-            if (airRes.ok) {
-              const airJson = await airRes.json();
-              airQuality = mapAirQuality(airJson);
-            }
-          } catch (e) {
-            console.warn('Air pollution API fetch error:', e);
-          }
-        }
-        if (!airQuality) {
-          airQuality = mapAirQuality(null);
-        }
-
-        const timezoneOffset = rawData.timezone || 0;
-        const mainCond = rawData.weather?.[0]?.main || 'Clear';
-        const iconCode = rawData.weather?.[0]?.icon || '01d';
-        const description = rawData.weather?.[0]?.description ? capitalize(rawData.weather[0].description) : mainCond;
-        const windSpeedKmh = Math.round((rawData.wind?.speed || 0) * 3.6);
-        const windDeg = rawData.wind?.deg || 0;
-        const dewPoint = Math.round(rawData.main.temp - ((100 - rawData.main.humidity) / 5));
-
-        const mappedCurrent = {
-          temp: Math.round(rawData.main.temp),
-          feels_like: Math.round(rawData.main.feels_like),
-          temp_min: Math.round(rawData.main.temp_min),
-          temp_max: Math.round(rawData.main.temp_max),
-          condition: mainCond,
-          condition_code: mainCond.toLowerCase().replace(/\s+/g, '_'),
-          description: description,
-          icon: mapOWMIcon(iconCode, mainCond),
-          humidity: rawData.main.humidity,
-          wind_speed: windSpeedKmh,
-          wind_direction: getWindDirection(windDeg),
-          wind_degree: windDeg,
-          pressure: rawData.main.pressure,
-          visibility: ((rawData.visibility || 10000) / 1000).toFixed(1),
-          uv_index: Math.min(11, Math.max(2, Math.round(8 - (rawData.clouds?.all || 0) / 20))),
-          dew_point: dewPoint,
-          cloud_cover: rawData.clouds?.all || 0,
-          sunrise: formatUnixTime(rawData.sys?.sunrise, timezoneOffset),
-          sunset: formatUnixTime(rawData.sys?.sunset, timezoneOffset),
-          air_quality: airQuality
-        };
-
-        const mappedLocation = {
-          city: rawData.name || location,
-          state: rawData.sys?.country || '',
-          country: rawData.sys?.country || 'Global',
-          lat: lat || 26.4499,
-          lon: lon || 80.3319,
-          elevation: `${Math.round(rawData.main?.sea_level || rawData.main?.grnd_level || 120)} m`,
-          timezone: `UTC${timezoneOffset >= 0 ? '+' : ''}${(timezoneOffset / 3600).toFixed(1)}`
-        };
-
-        const ai_insight = generateLiveAiInsight(mappedLocation.city, mappedCurrent);
-
-        return {
-          success: true,
-          data: {
-            location: mappedLocation,
-            current: mappedCurrent,
-            ai_insight
-          }
-        };
-      } else {
-        console.warn(`OpenWeatherMap API responded with status ${response.status}: ${response.statusText}`);
-      }
-    } catch (err) {
-      console.warn('OpenWeatherMap API network error:', err);
-    }
-  }
-
-  // 2. Try Backend API endpoint if configured
   try {
-    const response = await fetch(`${ENDPOINTS.CURRENT_WEATHER}?location=${encodeURIComponent(location)}`);
+    const response = await fetch(`${ENDPOINTS.CURRENT_WEATHER}?city=${encodeURIComponent(location)}`, {
+      headers: getAuthHeaders()
+    });
     if (response.ok) {
       const data = await response.json();
       return { success: true, data };
     }
-  } catch {
-    // Ignore backend connection errors and proceed to fallback
+    const errData = await response.json().catch(() => ({}));
+    return { success: false, error: errData.detail || `Server returned ${response.status}` };
+  } catch (err) {
+    console.warn('Backend weather API error:', err);
+    return { success: false, error: err.message };
   }
-
-  // 3. Fallback to mock database
-  const key = location.toLowerCase().trim();
-  const fallback = mockWeatherDatabase[key] || mockWeatherDatabase[defaultCity.toLowerCase()];
-  return { success: true, data: fallback, isFallback: true };
 }
 
 /**
- * Fetch forecast (hourly + 7-day) for a location
+ * Fetch forecast (hourly + 7-day) from FastAPI backend
  * @param {string} location
  */
 export async function getForecast(location = defaultCity) {
-  if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const key = location.toLowerCase().trim();
-    const cityData = mockWeatherDatabase[key] || mockWeatherDatabase[defaultCity.toLowerCase()];
-    return {
-      success: true,
-      hourly: cityData.hourly,
-      daily: cityData.daily,
-      location: cityData.location
-    };
-  }
-
-  // 1. Try Live OpenWeatherMap Forecast API
-  if (OPENWEATHER_API_KEY) {
-    try {
-      const url = `${OPENWEATHER_ENDPOINTS.FORECAST}?q=${encodeURIComponent(location)}&units=metric&appid=${OPENWEATHER_API_KEY}`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        const { hourly, daily } = mapOWMForecast(data);
-        return {
-          success: true,
-          hourly,
-          daily,
-          location: {
-            city: data.city?.name || location,
-            country: data.city?.country || '',
-            lat: data.city?.coord?.lat,
-            lon: data.city?.coord?.lon
-          }
-        };
-      }
-    } catch (err) {
-      console.warn('OpenWeatherMap forecast API error:', err);
-    }
-  }
-
-  // 2. Try Backend Forecast API
   try {
-    const response = await fetch(`${ENDPOINTS.FORECAST}?location=${encodeURIComponent(location)}`);
+    const response = await fetch(`${ENDPOINTS.FORECAST}?city=${encodeURIComponent(location)}`, {
+      headers: getAuthHeaders()
+    });
     if (response.ok) {
       const data = await response.json();
-      return { success: true, ...data };
+      return {
+        success: true,
+        hourly: data.hourly || [],
+        daily: data.daily || [],
+        location: data.location || { city: location }
+      };
     }
-  } catch {
-    // Ignore backend failure
+    return { success: false, hourly: [], daily: [] };
+  } catch (err) {
+    console.warn('Backend forecast API error:', err);
+    return { success: false, hourly: [], daily: [] };
   }
-
-  // 3. Fallback to mock data
-  const key = location.toLowerCase().trim();
-  const fallback = mockWeatherDatabase[key] || mockWeatherDatabase[defaultCity.toLowerCase()];
-  return { success: true, hourly: fallback.hourly, daily: fallback.daily, isFallback: true };
 }
 
 /**
- * Fetch weather alerts filtered by location and/or category
+ * Fetch weather alerts from FastAPI backend
  * @param {string} location
  * @param {string} category
  */
 export async function getWeatherAlerts(location = '', category = 'All') {
-  if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    let filtered = [...mockAlertsDatabase];
-
-    if (category && category !== 'All') {
-      filtered = filtered.filter(
-        (a) => a.category.toLowerCase() === category.toLowerCase()
-      );
-    }
-
-    if (location) {
-      const locLower = location.toLowerCase();
-      const locationSpecific = filtered.filter(
-        (a) => a.location.toLowerCase().includes(locLower) || a.region.toLowerCase().includes(locLower)
-      );
-      if (locationSpecific.length > 0) {
-        return { success: true, alerts: locationSpecific };
-      }
-    }
-
-    return { success: true, alerts: filtered };
-  }
-
   try {
     const params = new URLSearchParams();
-    if (location) params.append('location', location);
-    if (category && category !== 'All') params.append('category', category);
+    if (location) params.append('city', location);
+    if (category && category !== 'All') params.append('severity', category.toLowerCase());
 
-    const response = await fetch(`${ENDPOINTS.ALERTS}?${params.toString()}`);
+    const response = await fetch(`${ENDPOINTS.ALERTS}?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
     if (response.ok) {
       const data = await response.json();
-      return { success: true, alerts: data.alerts || data };
+      return { success: true, alerts: data.alerts || [] };
     }
-  } catch {
-    // Fallback to local database
+    return { success: false, alerts: [] };
+  } catch (err) {
+    console.warn('Backend alerts API error:', err);
+    return { success: false, alerts: [] };
   }
-
-  let filtered = [...mockAlertsDatabase];
-  if (category && category !== 'All') {
-    filtered = filtered.filter(
-      (a) => a.category.toLowerCase() === category.toLowerCase()
-    );
-  }
-  return { success: true, alerts: filtered, isFallback: true };
 }
 
 /**
- * Fetch climate analytics & historical trends
+ * Fetch climate analytics & historical trends from FastAPI backend
  * @param {string} location
  */
 export async function getClimateAnalytics(location = defaultCity) {
-  if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    return {
-      success: true,
-      data: mockClimateData
-    };
-  }
-
   try {
-    const response = await fetch(`${ENDPOINTS.CLIMATE}?location=${encodeURIComponent(location)}`);
+    const response = await fetch(`${ENDPOINTS.CLIMATE_SUMMARY}?city=${encodeURIComponent(location)}`, {
+      headers: getAuthHeaders()
+    });
     if (response.ok) {
       const data = await response.json();
       return { success: true, data };
     }
-  } catch {
-    // Fallback
+    return { success: false, data: null };
+  } catch (err) {
+    console.warn('Backend climate API error:', err);
+    return { success: false, data: null };
   }
-
-  return { success: true, data: mockClimateData, isFallback: true };
 }
 
 /**
- * Search locations matching input text via OpenWeather Geocoding API or fallback
+ * Search locations matching input text via Backend Geocoding API
  * @param {string} query
  */
 export async function searchLocations(query) {
   if (!query || query.trim().length < 1) return [];
   const q = query.trim();
 
-  // Try OpenWeatherMap Direct Geocoding API
-  if (OPENWEATHER_API_KEY && !USE_MOCK_DATA) {
-    try {
-      const geoUrl = `${OPENWEATHER_ENDPOINTS.GEO_DIRECT}?q=${encodeURIComponent(q)}&limit=5&appid=${OPENWEATHER_API_KEY}`;
-      const response = await fetch(geoUrl);
-      if (response.ok) {
-        const results = await response.json();
-        if (Array.isArray(results) && results.length > 0) {
-          return results.map((item) => ({
-            city: item.name,
-            state: item.state || '',
-            country: item.country || '',
-            lat: item.lat,
-            lon: item.lon
-          }));
-        }
+  try {
+    const url = `${ENDPOINTS.LOCATIONS_SEARCH}?query=${encodeURIComponent(q)}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (response.ok) {
+      const results = await response.json();
+      const items = results.items || results;
+      if (Array.isArray(items) && items.length > 0) {
+        return items.map((item) => ({
+          city: item.city || item.name,
+          state: item.state || '',
+          country: item.country || '',
+          lat: item.lat || item.latitude,
+          lon: item.lon || item.longitude
+        }));
       }
-    } catch (e) {
-      console.warn('OpenWeatherMap geocoding error:', e);
     }
+  } catch (e) {
+    console.warn('Backend geocoding search error:', e);
   }
 
-  // Fallback to local database search
-  const qLower = q.toLowerCase();
-  const allCities = Object.values(mockWeatherDatabase).map((c) => ({
-    city: c.location.city,
-    state: c.location.state,
-    country: c.location.country,
-    lat: c.location.lat,
-    lon: c.location.lon
-  }));
-
-  const matches = allCities.filter(
-    (c) =>
-      c.city.toLowerCase().includes(qLower) ||
-      c.state.toLowerCase().includes(qLower) ||
-      c.country.toLowerCase().includes(qLower)
-  );
-
-  return matches;
+  return [];
 }
 
 /**
@@ -608,33 +423,112 @@ export async function searchLocations(query) {
  * @param {number} lon
  */
 export async function getCityByCoordinates(lat, lon) {
-  // Try OpenWeatherMap Reverse Geocoding API
-  if (OPENWEATHER_API_KEY && !USE_MOCK_DATA) {
-    try {
-      const revUrl = `${OPENWEATHER_ENDPOINTS.GEO_REVERSE}?lat=${lat}&lon=${lon}&limit=1&appid=${OPENWEATHER_API_KEY}`;
-      const response = await fetch(revUrl);
-      if (response.ok) {
-        const results = await response.json();
-        if (Array.isArray(results) && results.length > 0 && results[0].name) {
-          return results[0].name;
-        }
+  try {
+    const url = `${ENDPOINTS.CURRENT_WEATHER}?lat=${lat}&lon=${lon}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.location?.city) {
+        return data.location.city;
       }
-    } catch (e) {
-      console.warn('OpenWeatherMap reverse geocoding error:', e);
     }
+  } catch (e) {
+    console.warn('Backend reverse coordinate lookup error:', e);
   }
 
-  // Fallback to Euclidean closest city in local database
-  let closest = Object.values(mockWeatherDatabase)[0];
-  let minDistance = Infinity;
+  return defaultCity;
+}
 
-  for (const item of Object.values(mockWeatherDatabase)) {
-    const dist = Math.hypot(item.location.lat - lat, item.location.lon - lon);
-    if (dist < minDistance) {
-      minDistance = dist;
-      closest = item;
+/**
+ * Fetch user saved locations from MongoDB backend
+ */
+export async function fetchSavedLocations() {
+  try {
+    const response = await fetch(ENDPOINTS.LOCATIONS_SAVED, {
+      headers: getAuthHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, items: data.items || [] };
     }
+  } catch (e) {
+    console.warn('Failed to fetch saved locations from MongoDB:', e);
   }
+  return { success: false, items: [] };
+}
 
-  return closest?.location?.city || defaultCity;
+/**
+ * Save / Favorite a location in MongoDB backend
+ */
+export async function saveLocationToBackend({ name, latitude, longitude, state, country, tag = 'Favorite' }) {
+  try {
+    const response = await fetch(ENDPOINTS.LOCATIONS_SAVED, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        name,
+        latitude,
+        longitude,
+        state,
+        country,
+        tag,
+      }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, data };
+    }
+  } catch (e) {
+    console.warn('Failed to save location in MongoDB:', e);
+  }
+  return { success: false };
+}
+
+/**
+ * Delete saved location from MongoDB
+ */
+export async function deleteSavedLocationFromBackend(locationId) {
+  try {
+    const response = await fetch(`${ENDPOINTS.LOCATIONS_SAVED}/${locationId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch weather query history from MongoDB backend
+ */
+export async function fetchWeatherHistory() {
+  try {
+    const response = await fetch(ENDPOINTS.WEATHER_HISTORY, {
+      headers: getAuthHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, items: data.items || [] };
+    }
+  } catch (e) {
+    console.warn('Failed to fetch weather history:', e);
+  }
+  return { success: false, items: [] };
+}
+
+/**
+ * Fetch popular / trending cities from MongoDB
+ */
+export async function fetchPopularCities() {
+  try {
+    const response = await fetch(ENDPOINTS.WEATHER_POPULAR);
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, items: data.items || [] };
+    }
+  } catch (e) {
+    console.warn('Failed to fetch popular cities:', e);
+  }
+  return { success: false, items: [] };
 }

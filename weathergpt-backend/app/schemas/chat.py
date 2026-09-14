@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WeatherContextSchema(BaseModel):
@@ -35,6 +36,11 @@ class ChatRequest(BaseModel):
         examples=["en", "hi"],
         description="Desired language code ('en' or 'hi'). Auto-detected if omitted."
     )
+    input_mode: Optional[str] = Field(
+        default="text",
+        examples=["text", "voice"],
+        description="Input origin method: 'text' or 'voice'"
+    )
     conversation_id: Optional[str] = Field(
         default=None,
         examples=["sess-12345"],
@@ -57,12 +63,21 @@ class ChatRequest(BaseModel):
             raise ValueError("Message cannot be empty or whitespace only.")
         return v.strip()
 
+    @field_validator("input_mode")
+    @classmethod
+    def validate_input_mode(cls, v: Optional[str]) -> str:
+        if not v:
+            return "text"
+        clean = v.lower().strip()
+        return clean if clean in ("text", "voice") else "text"
+
 
 class ChatResponse(BaseModel):
     """Context-grounded assistant response payload."""
 
     success: bool = Field(default=True, description="Whether the request was processed successfully")
-    message: str = Field(..., examples=["There is a 40% chance of light rain tomorrow in Kanpur."], description="Conversational AI or fallback response")
+    reply: str = Field(default="", examples=["कल कानपुर में बारिश की संभावना है..."], description="Conversational AI response (Step 5)")
+    message: str = Field(default="", examples=["There is a 40% chance of light rain tomorrow in Kanpur."], description="Conversational AI or fallback response")
     intent: Optional[str] = Field(default=None, examples=["rainfall", "forecast"], description="Detected user intent")
     location: Optional[str] = Field(default=None, examples=["Kanpur"], description="Resolved location used for weather telemetry")
     language: Optional[str] = Field(default="en", examples=["en", "hi"], description="Language code of the response")
@@ -70,4 +85,18 @@ class ChatResponse(BaseModel):
     ai_generated: bool = Field(default=True, description="Indicates if the response was generated via LLM (True) or deterministic fallback (False)")
     data: Optional[Dict[str, Any]] = Field(default=None, description="Structured weather metrics for frontend UI rendering")
     weather_context: Optional[Dict[str, Any]] = Field(default=None, description="Weather facts used for grounding the response (backwards compatibility)")
-    source: str = Field(default="weathergpt_ai", examples=["weathergpt_ai"], description="Response generation mechanism")
+    source: str = Field(default="weather_context", examples=["weather_context"], description="Response generation mechanism")
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="Response timestamp")
+
+    @model_validator(mode="before")
+    @classmethod
+    def harmonize_reply_and_message(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        text = d.get("reply") or d.get("message") or ""
+        d["reply"] = text
+        d["message"] = text
+        if "timestamp" not in d or not d["timestamp"]:
+            d["timestamp"] = datetime.now(timezone.utc).isoformat()
+        return d

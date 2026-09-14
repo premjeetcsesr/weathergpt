@@ -1,9 +1,11 @@
 import React from 'react';
-import { Bot, User, Droplets, Wind, AlertTriangle, CloudSun, MapPin, Sparkles } from 'lucide-react';
+import { Bot, User, Droplets, Wind, AlertTriangle, CloudSun, MapPin, Sparkles, Mic } from 'lucide-react';
 import { SeverityBadge } from '../common/Badge';
+import { VoiceOutput } from '../VoiceOutput';
 
 export function ChatMessage({ message, onFollowUpClick }) {
   const isAi = message.sender === 'ai';
+  const messageText = message.reply || message.text || message.message || '';
 
   // Simple Markdown parser for bullet points, bold text, headers, and blockquotes
   const renderFormattedText = (rawText) => {
@@ -84,7 +86,21 @@ export function ChatMessage({ message, onFollowUpClick }) {
               : 'bg-brand-500 text-white font-medium rounded-br-none ml-auto'
           }`}
         >
-          {isAi ? renderFormattedText(message.text) : <p className="text-sm">{message.text}</p>}
+          {isAi ? renderFormattedText(messageText) : <p className="text-sm">{messageText}</p>}
+
+          {/* AI Voice Output Controls */}
+          {isAi && messageText && (
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <VoiceOutput text={messageText} language={message.language || 'en'} />
+                {message.language === 'hi' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-medium">
+                    हिन्दी
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Embedded Weather Telemetry Card */}
           {message.weatherCard && (
@@ -161,10 +177,17 @@ export function ChatMessage({ message, onFollowUpClick }) {
           )}
         </div>
 
-        {/* Timestamp */}
-        <span className={`text-[10px] text-slate-400 mt-1 block px-2 ${isAi ? 'text-left' : 'text-right'}`}>
-          {message.timestamp}
-        </span>
+        {/* Timestamp & Voice Badge */}
+        <div className={`flex items-center gap-2 mt-1 px-2 ${isAi ? 'justify-start' : 'justify-end'}`}>
+          {!isAi && message.input_mode === 'voice' && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-brand-600 dark:text-brand-400 font-semibold bg-brand-50 dark:bg-brand-950/50 px-1.5 py-0.5 rounded-md border border-brand-200/60 dark:border-brand-800/60">
+              <Mic className="w-2.5 h-2.5" /> Voice
+            </span>
+          )}
+          <span className="text-[10px] text-slate-400">
+            {message.timestamp}
+          </span>
+        </div>
       </div>
 
       {/* User Avatar */}

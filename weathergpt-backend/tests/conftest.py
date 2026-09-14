@@ -4,17 +4,50 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 from httpx import ASGITransport
 from app.main import app
+from mongomock_motor import AsyncMongoMockClient
 from app.api.deps import (
+    get_alert_repo,
     get_alert_service,
+    get_alert_sub_repo,
+    get_chat_repo,
+    get_chat_service,
     get_forecast_service,
     get_geocoding_service,
+    get_location_repo,
+    get_mongo_db,
+    get_notification_history_repo,
+    get_notification_repo,
+    get_notification_service,
+    get_user_repo,
+    get_weather_history_repo,
     get_weather_provider,
     get_weather_service,
+    get_websocket_manager,
+)
+from app.db.mongo_repositories import (
+    MongoAlertRepository,
+    MongoAlertSubscriptionRepository,
+    MongoChatHistoryRepository,
+    MongoLocationRepository,
+    MongoNotificationHistoryRepository,
+    MongoNotificationRepository,
+    MongoUserRepository,
+    MongoWeatherHistoryRepository,
+    MongoOfficialWarningRepository,
+    MongoAdvisoryRepository,
+    MongoProviderStatusRepository,
+)
+from app.api.deps import (
+    get_official_warning_repo,
+    get_advisory_repo,
+    get_provider_status_repo,
 )
 from app.providers.base import BaseWeatherProvider
 from app.services.alert_service import AlertService
+from app.services.chat_service import ChatService
 from app.services.forecast_service import ForecastService
 from app.services.geocoding_service import GeocodingService
+from app.services.llm_service import LLMService
 from app.services.weather_service import WeatherService
 
 
@@ -123,17 +156,63 @@ def mock_provider() -> MockWeatherProvider:
     return MockWeatherProvider()
 
 
+@pytest.fixture
+def mock_mongo_db():
+    client = AsyncMongoMockClient()
+    return client["test_weathergpt"]
+
+
 @pytest_asyncio.fixture
-async def async_client(mock_provider: MockWeatherProvider) -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Provide AsyncClient with mocked providers overriding FastAPI dependencies."""
+async def async_client(mock_provider: MockWeatherProvider, mock_mongo_db) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Provide AsyncClient with mocked providers and async Mongo database."""
+    user_repo = MongoUserRepository(db=mock_mongo_db)
+    chat_repo = MongoChatHistoryRepository(db=mock_mongo_db)
+    loc_repo = MongoLocationRepository(db=mock_mongo_db)
+    weather_hist_repo = MongoWeatherHistoryRepository(db=mock_mongo_db)
+    notification_repo = MongoNotificationRepository(db=mock_mongo_db)
+    alert_repo = MongoAlertRepository(db=mock_mongo_db)
+    sub_repo = MongoAlertSubscriptionRepository(db=mock_mongo_db)
+    notif_hist_repo = MongoNotificationHistoryRepository(db=mock_mongo_db)
+
+    alert_svc = AlertService(provider=mock_provider, alert_repo=alert_repo)
+    weather_svc = WeatherService(provider=mock_provider)
+    forecast_svc = ForecastService(provider=mock_provider)
+    geocoding_svc = GeocodingService(provider=mock_provider)
+    llm_svc = LLMService()
+
+    warning_repo = MongoOfficialWarningRepository(db=mock_mongo_db)
+    advisory_repo = MongoAdvisoryRepository(db=mock_mongo_db)
+    provider_status_repo = MongoProviderStatusRepository(db=mock_mongo_db)
+
+    app.dependency_overrides[get_mongo_db] = lambda: mock_mongo_db
+    app.dependency_overrides[get_user_repo] = lambda: user_repo
+    app.dependency_overrides[get_chat_repo] = lambda: chat_repo
+    app.dependency_overrides[get_location_repo] = lambda: loc_repo
+    app.dependency_overrides[get_weather_history_repo] = lambda: weather_hist_repo
+    app.dependency_overrides[get_notification_repo] = lambda: notification_repo
+    app.dependency_overrides[get_alert_repo] = lambda: alert_repo
+    app.dependency_overrides[get_alert_sub_repo] = lambda: sub_repo
+    app.dependency_overrides[get_notification_history_repo] = lambda: notif_hist_repo
+    app.dependency_overrides[get_official_warning_repo] = lambda: warning_repo
+    app.dependency_overrides[get_advisory_repo] = lambda: advisory_repo
+    app.dependency_overrides[get_provider_status_repo] = lambda: provider_status_repo
+
     app.dependency_overrides[get_weather_provider] = lambda: mock_provider
-    app.dependency_overrides[get_weather_service] = lambda: WeatherService(provider=mock_provider)
-    app.dependency_overrides[get_forecast_service] = lambda: ForecastService(provider=mock_provider)
-    app.dependency_overrides[get_geocoding_service] = lambda: GeocodingService(provider=mock_provider)
-    app.dependency_overrides[get_alert_service] = lambda: AlertService(provider=mock_provider)
+    app.dependency_overrides[get_weather_service] = lambda: weather_svc
+    app.dependency_overrides[get_forecast_service] = lambda: forecast_svc
+    app.dependency_overrides[get_geocoding_service] = lambda: geocoding_svc
+    app.dependency_overrides[get_alert_service] = lambda: alert_svc
+    app.dependency_overrides[get_chat_service] = lambda: ChatService(
+        weather_service=weather_svc,
+        forecast_service=forecast_svc,
+        alert_service=alert_svc,
+        llm_service=llm_svc,
+        chat_repo=chat_repo,
+    )
 
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
     app.dependency_overrides.clear()
+
