@@ -9,8 +9,8 @@ export function MobileNav() {
   const { alerts } = useWeather();
 
   const navItems = [
-    { to: '/', label: t('navDashboard'), icon: LayoutDashboard },
-    { to: '/assistant', label: t('navAssistant'), icon: Bot, isSpecial: true },
+    { to: '/', label: t('navAssistant') || 'Assistant', icon: Bot, isSpecial: true },
+    { to: '/dashboard', label: t('navDashboard'), icon: LayoutDashboard },
     { to: '/map', label: t('navMap'), icon: Map },
     { to: '/alerts', label: t('navAlerts'), icon: AlertTriangle, badge: alerts?.length > 0 ? alerts.length : null },
     { to: '/climate', label: t('navClimate'), icon: BarChart3 },

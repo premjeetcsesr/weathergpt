@@ -20,16 +20,16 @@ export function Sidebar() {
   const navItems = [
     {
       to: '/',
+      label: t('navAssistant') || 'WeatherGPT AI',
+      icon: Sparkles,
+      badge: 'AI',
+      badgeClass: 'bg-gradient-to-r from-brand-500 to-indigo-500 text-white'
+    },
+    {
+      to: '/dashboard',
       label: t('navDashboard'),
       icon: LayoutDashboard,
       badge: null
-    },
-    {
-      to: '/assistant',
-      label: t('navAssistant'),
-      icon: Bot,
-      badge: 'AI',
-      badgeClass: 'bg-brand-500 text-white'
     },
     {
       to: '/map',
@@ -99,18 +99,18 @@ export function Sidebar() {
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-brand-900/90 via-slate-900 to-indigo-950 text-white shadow-elevated border border-brand-800/40 relative overflow-hidden">
           <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-brand-500/20 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center gap-2 text-brand-300 text-xs font-semibold mb-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Atmospheric Engine</span>
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            <span>Weather Telemetry</span>
           </div>
           <p className="text-[11px] text-slate-300 mb-2.5 leading-relaxed">
-            Hyperlocal precipitation modeling powered by machine intelligence.
+            Live radar, atmospheric sensors, and multi-day telemetry.
           </p>
           <NavLink
-            to="/assistant"
+            to="/dashboard"
             className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold transition-colors shadow-sm"
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Ask WeatherGPT</span>
+            <span>View Dashboard</span>
           </NavLink>
         </div>
       </div>

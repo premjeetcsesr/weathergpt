@@ -144,11 +144,36 @@ class LLMService:
         forecast_details = weather_context.get("forecast_summary", "Not requested or standard 24h/7d telemetry.")
         source_name = weather_context.get("source", "Verified Meteorological Provider")
 
-        lang_instruction = (
-            "Respond naturally and fluently in HINDI (हिन्दी). Use clean, accurate Hindi phrasing."
-            if language == "hi"
-            else "Respond naturally, concisely, and helpfully in ENGLISH."
-        )
+        # Detect language and give appropriate instruction
+        lang_map = {
+            "hi": "HINDI (हिन्दी). Use clean Devanagari script.",
+            "bn": "BENGALI (বাংলা). Use clean Bengali script.",
+            "mr": "MARATHI (मराठी). Use clean Devanagari script.",
+            "ta": "TAMIL (தமிழ்). Use clean Tamil script.",
+            "te": "TELUGU (తెలుగు). Use clean Telugu script.",
+            "gu": "GUJARATI (ગુજરાતી). Use clean Gujarati script.",
+            "kn": "KANNADA (ಕನ್ನಡ). Use clean Kannada script.",
+            "ml": "MALAYALAM (മലയാളം). Use clean Malayalam script.",
+            "pa": "PUNJABI (ਪੰਜਾਬੀ). Use clean Gurmukhi script.",
+            "ur": "URDU (اردو). Use clean Urdu/Nastaliq script.",
+            "fr": "FRENCH (Français). Use clean, accurate French phrasing.",
+            "de": "GERMAN (Deutsch). Use clean, accurate German phrasing.",
+            "es": "SPANISH (Español). Use clean, accurate Spanish phrasing.",
+            "ar": "ARABIC (العربية). Use clean Arabic script.",
+            "zh": "CHINESE (中文). Use clear Simplified Chinese characters.",
+            "ja": "JAPANESE (日本語). Use natural Japanese phrasing.",
+            "ko": "KOREAN (한국어). Use natural Korean phrasing.",
+            "ru": "RUSSIAN (Русский). Use clean Cyrillic script.",
+            "pt": "PORTUGUESE (Português). Use natural Portuguese phrasing.",
+            "it": "ITALIAN (Italiano). Use clean, natural Italian phrasing.",
+        }
+        if language in lang_map:
+            lang_instruction = f"Respond naturally and fluently in {lang_map[language]} Keep numerical values (temperatures, percentages, wind speed) exact."
+        elif language and language != "en":
+            # Unknown/unsupported language — still try to respond in it
+            lang_instruction = f"The user's preferred language code is '{language}'. Respond naturally and fluently in that language. Keep numerical values exact."
+        else:
+            lang_instruction = "Respond naturally, concisely, and helpfully in ENGLISH."
 
         return (
             "You are WeatherGPT, a weather information assistant.\n\n"

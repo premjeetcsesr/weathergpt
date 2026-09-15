@@ -10,6 +10,7 @@ import {
   User,
   LogOut,
   Settings as SettingsIcon,
+  LayoutDashboard,
   MapPin,
   CheckCircle,
   ShieldCheck,
@@ -20,7 +21,7 @@ import { useWeather } from '../../context/WeatherContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -106,6 +107,37 @@ export function Navbar() {
             </p>
           </div>
         </Link>
+
+        {/* Quick View Mode Switcher: AI Assistant vs Dashboard */}
+        <div className="hidden md:flex items-center bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold shadow-inner">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${
+                isActive
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              }`
+            }
+          >
+            <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+            <span>AI Assistant</span>
+          </NavLink>
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${
+                isActive
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              }`
+            }
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            <span>{t('navDashboard') || 'Dashboard'}</span>
+          </NavLink>
+        </div>
 
         {/* Right Action Icons & Controls */}
         <div className="flex items-center gap-2 sm:gap-3">

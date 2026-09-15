@@ -14,7 +14,7 @@ export function AIInsight() {
   const { ai_insight, location } = weatherData;
 
   const handleAskGPT = () => {
-    navigate('/assistant', {
+    navigate('/', {
       state: { prompt: `Tell me more about the weather forecast and travel conditions in ${location.city}` }
     });
   };

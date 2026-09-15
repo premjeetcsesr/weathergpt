@@ -1,11 +1,20 @@
-import React from 'react';
-import { Bot, User, Droplets, Wind, AlertTriangle, CloudSun, MapPin, Sparkles, Mic } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, User, Droplets, Wind, AlertTriangle, CloudSun, MapPin, Sparkles, Mic, Copy, Check } from 'lucide-react';
 import { SeverityBadge } from '../common/Badge';
 import { VoiceOutput } from '../VoiceOutput';
 
 export function ChatMessage({ message, onFollowUpClick }) {
+  const [copied, setCopied] = useState(false);
   const isAi = message.sender === 'ai';
   const messageText = message.reply || message.text || message.message || '';
+
+  const handleCopy = () => {
+    if (!messageText) return;
+    navigator.clipboard.writeText(messageText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
 
   // Simple Markdown parser for bullet points, bold text, headers, and blockquotes
   const renderFormattedText = (rawText) => {
@@ -70,27 +79,27 @@ export function ChatMessage({ message, onFollowUpClick }) {
     <div className={`flex gap-3 my-4 ${isAi ? 'justify-start' : 'justify-end'}`}>
       {/* AI Avatar */}
       {isAi && (
-        <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-subtle mt-1">
-          <Bot className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-glow mt-1">
+          <Sparkles className="w-4 h-4 text-white animate-pulse" />
         </div>
       )}
 
       {/* Bubble Container */}
-      <div className={`max-w-[88%] sm:max-w-xl md:max-w-2xl ${isAi ? 'items-start' : 'items-end'}`}>
+      <div className={`max-w-[90%] sm:max-w-xl md:max-w-2xl ${isAi ? 'items-start' : 'items-end'}`}>
         
         {/* Message Box */}
         <div
           className={`p-4 sm:p-5 rounded-3xl transition-all shadow-subtle ${
             isAi
               ? 'bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200'
-              : 'bg-brand-500 text-white font-medium rounded-br-none ml-auto'
+              : 'bg-gradient-to-r from-brand-600 to-sky-500 text-white font-medium rounded-br-none ml-auto shadow-sm'
           }`}
         >
           {isAi ? renderFormattedText(messageText) : <p className="text-sm">{messageText}</p>}
 
-          {/* AI Voice Output Controls */}
+          {/* AI Voice Output & Copy Controls */}
           {isAi && messageText && (
-            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <VoiceOutput text={messageText} language={message.language || 'en'} />
                 {message.language === 'hi' && (
@@ -99,6 +108,24 @@ export function ChatMessage({ message, onFollowUpClick }) {
                   </span>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+                title="Copy response"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-emerald-500 font-semibold text-[11px]">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="text-[11px]">Copy</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 

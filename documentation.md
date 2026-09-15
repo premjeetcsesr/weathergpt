@@ -1,4 +1,4 @@
-# WeatherGPT — Technical Documentation & Architecture Specification
+ # WeatherGPT — Technical Documentation & Architecture Specification
 
 ---
 

@@ -42,8 +42,9 @@ function AppContent() {
         {/* Main Scrollable Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden mb-16 md:mb-0">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/assistant" element={<Assistant />} />
+            <Route path="/" element={<Assistant />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/assistant" element={<Navigate to="/" replace />} />
             <Route path="/map" element={<WeatherMapPage />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/climate" element={<Climate />} />
