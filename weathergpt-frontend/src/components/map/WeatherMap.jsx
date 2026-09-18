@@ -3,8 +3,9 @@ import { MapContainer, TileLayer, ImageOverlay, Marker, Popup, useMap, Circle } 
 import { useWeather } from '../../context/WeatherContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { MAP_TILE_BASE_URL, CARTO_API_KEY } from '../../services/apiConfig';
-import { createCustomMarkerIcon, createAlertMarkerIcon } from './LocationMarker';
+import { MAP_TILE_BASE_URL } from '../../services/apiConfig';
+import { createCustomMarkerIcon, createAlertMarkerIcon, createCommunityMarkerIcon } from './LocationMarker';
+import { fetchCommunityReports } from '../../services/communityReportsApi';
 import { WeatherLayers, MapLegend } from './WeatherLayers';
 import {
   CloudRain,
@@ -18,8 +19,10 @@ import {
   RefreshCw,
   Sliders,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Camera
 } from 'lucide-react';
+import { ReportModal } from '../community/ReportModal';
 import {
   fetchRadarStatus,
   fetchRadarLayer,
@@ -51,6 +54,29 @@ function formatISTTime(isoTimestamp) {
   }
 }
 
+function playCommunityAlertChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(659.25, now); // E5
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+    osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.3); // D6
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.55);
+  } catch {
+    // browser audio permission fallback
+  }
+}
+
 // Sub-component to handle smooth pan/fly to selected coordinates
 function MapController({ center, zoom = 6 }) {
   const map = useMap();
@@ -65,7 +91,7 @@ function MapController({ center, zoom = 6 }) {
   return null;
 }
 
-export function WeatherMap({ height = "550px" }) {
+export function WeatherMap({ height = "550px", focusCoords = null, focusReportId = null }) {
   const { selectedCity, weatherData, alerts, savedLocations, searchCity, formatTemp, formatWind } = useWeather();
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -85,6 +111,25 @@ export function WeatherMap({ height = "550px" }) {
 
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
 
+  // Community Reports Layer State & Real-time Alert
+  const [communityReports, setCommunityReports] = useState([]);
+  const [showCommunityReports, setShowCommunityReports] = useState(true);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [activeCommunityAlert, setActiveCommunityAlert] = useState(null);
+  const [highlightedReportId, setHighlightedReportId] = useState(focusReportId || null);
+  const [flyTarget, setFlyTarget] = useState(focusCoords || null);
+
+  // Sync external focus coords if provided
+  useEffect(() => {
+    if (focusCoords && focusCoords[0] && focusCoords[1]) {
+      setFlyTarget(focusCoords);
+      setShowCommunityReports(true);
+      if (focusReportId) {
+        setHighlightedReportId(focusReportId);
+      }
+    }
+  }, [focusCoords, focusReportId]);
+
   // Poll / Check provider statuses on mount
   const checkStatuses = useCallback(async () => {
     try {
@@ -101,7 +146,37 @@ export function WeatherMap({ height = "550px" }) {
 
   useEffect(() => {
     checkStatuses();
+
+    // Fetch verified community reports for map display
+    async function loadReports() {
+      try {
+        const data = await fetchCommunityReports({ pageSize: 50 });
+        setCommunityReports(data.items || []);
+      } catch (err) {
+        console.warn('Could not load community reports for map:', err);
+      }
+    }
+    loadReports();
   }, [checkStatuses]);
+
+  // Real-time listener: When a user clicks photo and reports from current location, pin appears instantly on map with alert!
+  useEffect(() => {
+    const handleNewReport = (event) => {
+      const rep = event.detail;
+      if (rep && rep.location?.latitude && rep.location?.longitude) {
+        setCommunityReports((prev) => [rep, ...prev.filter((p) => p.id !== rep.id)]);
+        setShowCommunityReports(true);
+        setActiveCommunityAlert(rep);
+        setHighlightedReportId(rep.id);
+        setFlyTarget([rep.location.latitude, rep.location.longitude]);
+        playCommunityAlertChime();
+      }
+    };
+    window.addEventListener('community-report-added', handleNewReport);
+    return () => window.removeEventListener('community-report-added', handleNewReport);
+  }, []);
+
+
 
   // Load active layer definitions when switched to radar or satellite
   useEffect(() => {
@@ -141,13 +216,39 @@ export function WeatherMap({ height = "550px" }) {
     <div className="relative w-full rounded-3xl overflow-hidden shadow-card border border-slate-200/80 dark:border-slate-800 bg-slate-900" style={{ height }}>
       {/* Top Floating Controls */}
       <div className="absolute top-4 left-4 right-4 z-[400] flex flex-wrap items-center justify-between gap-3 pointer-events-none">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-2">
           <WeatherLayers
             activeLayer={activeLayer}
             setActiveLayer={setActiveLayer}
             radarStatus={radarStatus}
             satelliteStatus={satelliteStatus}
           />
+          <button
+            type="button"
+            onClick={() => setShowCommunityReports(!showCommunityReports)}
+            className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all shadow-elevated flex items-center gap-1.5 ${
+              showCommunityReports
+                ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                : 'bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+            }`}
+            title="Toggle Community Incident Reports"
+          >
+            <span>📸 Incident Reports</span>
+            {communityReports.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/20 text-white font-mono">
+                {communityReports.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 bg-gradient-to-r from-red-500 via-amber-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{t('reportIncidentBtn') || 'Report Hazard (Current Location)'}</span>
+          </button>
         </div>
 
         {/* Live Feed Status Pill & Opacity Controls for Radar / Satellite */}
@@ -350,6 +451,81 @@ export function WeatherMap({ height = "550px" }) {
         </div>
       )}
 
+      {/* Live Community Incident Alert Banner */}
+      {activeCommunityAlert && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[450] w-[94%] sm:w-auto max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-red-500 rounded-3xl p-3.5 sm:p-4 shadow-2xl animate-fade-in">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-red-600 to-amber-500 text-white flex items-center justify-center text-2xl shrink-0 shadow-md">
+              {activeCommunityAlert.category_icon || '⚠️'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                  <span className="text-[11px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                    {t('communityAlertTitle') || 'Live Community Hazard Alert'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCommunityAlert(null)}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate mt-0.5">
+                {activeCommunityAlert.category_name || activeCommunityAlert.category}: {activeCommunityAlert.location_name || 'Current Location'}
+              </h4>
+
+              <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mt-1 italic">
+                &ldquo;{activeCommunityAlert.description}&rdquo;
+              </p>
+
+              {activeCommunityAlert.image_url && (
+                <div className="mt-2 flex items-center gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80">
+                  <img
+                    src={activeCommunityAlert.image_url}
+                    alt="Live Photo"
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                  />
+                  <div className="text-[10px] text-slate-600 dark:text-slate-300">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
+                      📸 Live Ground Photo Attached
+                    </span>
+                    <span>
+                      {activeCommunityAlert.location?.latitude ? `${activeCommunityAlert.location.latitude.toFixed(4)}, ${activeCommunityAlert.location.longitude.toFixed(4)}` : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeCommunityAlert.location) {
+                      setFlyTarget([activeCommunityAlert.location.latitude, activeCommunityAlert.location.longitude]);
+                    }
+                  }}
+                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1 shadow-sm"
+                >
+                  <span>Focus Map Pin 🎯</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCommunityAlert(null)}
+                  className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-[11px] font-medium transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Leaflet Map Container */}
       <MapContainer
         center={currentCenter}
@@ -358,44 +534,19 @@ export function WeatherMap({ height = "550px" }) {
         style={{ height: '100%', width: '100%' }}
         className="z-10"
       >
-        <MapController center={currentCenter} zoom={7} />
+        <MapController center={flyTarget || currentCenter} zoom={flyTarget ? 14 : 7} />
         
         {/* Base Tile Layer */}
-        {CARTO_API_KEY ? (
-          <TileLayer
-            key={isDark ? 'carto-dark' : 'carto-light'}
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url={
-              isDark
-                ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`
-                : `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`
-            }
-            maxZoom={19}
-          />
-        ) : (
-          <>
-            <TileLayer
-              key={isDark ? 'esri-dark-base' : 'esri-light-base'}
-              attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
-              url={
-                isDark
-                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-                  : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-              }
-              maxZoom={16}
-            />
-            <TileLayer
-              key={isDark ? 'esri-dark-ref' : 'esri-light-ref'}
-              url={
-                isDark
-                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
-                  : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
-              }
-              maxZoom={16}
-              zIndex={5}
-            />
-          </>
-        )}
+        <TileLayer
+          key={isDark ? 'esri-dark-base' : 'esri-light-base'}
+          attribution='&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ'
+          url={
+            isDark
+              ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+              : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
+          }
+          maxZoom={16}
+        />
 
         {/* Live Weather Tile Layers via Backend Proxy */}
         {activeLayer === 'precipitation' && (
@@ -633,7 +784,67 @@ export function WeatherMap({ height = "550px" }) {
             </Marker>
           );
         })}
+
+        {/* Verified & Live Community Incident Reports */}
+        {showCommunityReports &&
+          communityReports.map((report) => {
+            if (!report.location?.latitude || !report.location?.longitude) return null;
+            const isHighlighted = report.id === highlightedReportId;
+            return (
+              <Marker
+                key={`comm-${report.id}`}
+                position={[report.location.latitude, report.location.longitude]}
+                icon={createCommunityMarkerIcon(
+                  report.category,
+                  report.category_icon,
+                  report.is_verified,
+                  isHighlighted
+                )}
+              >
+                <Popup>
+                  <div className="p-2.5 max-w-xs text-xs space-y-1.5">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      <span className="font-bold flex items-center gap-1 text-slate-900 dark:text-slate-100">
+                        <span>{report.category_icon}</span>
+                        <span>{report.category_name}</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        ✓ Verified Community
+                      </span>
+                    </div>
+
+                    <p className="text-slate-700 dark:text-slate-300 leading-snug">
+                      &ldquo;{report.description}&rdquo;
+                    </p>
+
+                    {report.image_url && (
+                      <div className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 mt-1">
+                        <img
+                          src={report.image_url}
+                          alt="Incident Photo"
+                          className="w-full h-28 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(report.image_url, '_blank')}
+                          title="Click to view full photo"
+                        />
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                      <span>📍 {report.location_name || 'Ground Location'}</span>
+                      <span className="font-semibold text-brand-600">Community Report</span>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
       </MapContainer>
+
+      {/* Community Report Modal */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+      />
     </div>
   );
 }

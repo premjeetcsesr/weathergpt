@@ -30,6 +30,7 @@ export function WeatherProvider({ children }) {
   // Active floating alert toast state
   const [activeToast, setActiveToast] = useState(null);
   const lastAlertToastIdRef = useRef(null);
+  const lastBrowserNotificationIdRef = useRef(null);
 
   // Units: 'C' or 'F' for temperature, 'kmh' or 'mph' for wind
   const [tempUnit, setTempUnit] = useState(() => {
@@ -240,6 +241,23 @@ export function WeatherProvider({ children }) {
     });
     // Trigger toast popup on real-time event
     setActiveToast(newAlert);
+
+    const alertId = newAlert.id || newAlert.alert_id;
+    const pushEnabled = localStorage.getItem('weathergpt_push_alerts') !== 'false';
+    if (
+      pushEnabled &&
+      alertId &&
+      alertId !== lastBrowserNotificationIdRef.current &&
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      Notification.permission === 'granted'
+    ) {
+      lastBrowserNotificationIdRef.current = alertId;
+      new Notification(newAlert.event || newAlert.title || 'Weather Alert', {
+        body: newAlert.headline || newAlert.description || 'A new weather alert was received.',
+        tag: `weathergpt-alert-${alertId}`,
+      });
+    }
   }, []);
 
   const handleAlertExpired = useCallback((expiredId) => {

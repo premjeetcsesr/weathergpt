@@ -14,7 +14,9 @@ from app.db.mongo_repositories import (
     MongoNotificationRepository,
     MongoUserRepository,
     MongoWeatherHistoryRepository,
+    MongoCommunityReportRepository,
 )
+from app.services.cloudinary_service import CloudinaryService
 from app.providers.base import BaseWeatherProvider
 from app.providers.weather_provider import OpenWeatherMapProvider
 from app.services.alert_service import AlertService
@@ -86,6 +88,20 @@ def get_notification_service(
 ) -> NotificationService:
     """Dependency for NotificationService."""
     return NotificationService(ws_manager=ws_manager, history_repo=history_repo)
+
+
+def get_community_report_repo(
+    db: Optional[AsyncIOMotorDatabase] = Depends(get_mongo_db),
+) -> MongoCommunityReportRepository:
+    """Dependency for MongoCommunityReportRepository."""
+    return MongoCommunityReportRepository(db=db)
+
+
+def get_cloudinary_service(
+    settings: Settings = Depends(get_settings),
+) -> CloudinaryService:
+    """Dependency for CloudinaryService."""
+    return CloudinaryService(settings=settings)
 
 
 # ---------------------------------------------------------------------------

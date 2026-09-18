@@ -79,17 +79,21 @@ export function CurrentWeather() {
         </div>
 
         {/* Air Quality Index Pill */}
-        {current.air_quality && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-subtle backdrop-blur-sm">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <div className="text-xs">
-              <span className="text-slate-500 dark:text-slate-400">{t('airQuality')}: </span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-subtle backdrop-blur-sm">
+          <div className={`w-2 h-2 rounded-full ${current.air_quality ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+          <div className="text-xs">
+            <span className="text-slate-500 dark:text-slate-400">{t('airQuality')}: </span>
+            {current.air_quality ? (
               <span className={`font-semibold ${current.air_quality.color}`}>
                 AQI {current.air_quality.aqi} ({current.air_quality.label})
               </span>
-            </div>
+            ) : (
+              <span className="font-semibold text-slate-500 dark:text-slate-400">
+                Data unavailable
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Center Hero: Temperature & Main Condition Icon */}

@@ -64,6 +64,21 @@ class Settings(BaseSettings):
         "bhuvan.nrsc.gov.in",
     ]
 
+    # Cloudinary Image Storage
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+    CLOUDINARY_URL: Optional[str] = None
+    CLOUDINARY_FOLDER: str = "weathergpt/community_reports"
+    COMMUNITY_REPORT_MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5 MB
+    COMMUNITY_REPORT_RATE_LIMIT_PER_10_MIN: int = 5
+
+    # Google Maps Platform APIs
+    GOOGLE_PLACES_API_KEY: Optional[str] = None
+    GOOGLE_GEOCODING_API_KEY: Optional[str] = None
+    GOOGLE_ROUTES_API_KEY: Optional[str] = None
+    GOOGLE_MAPS_JAVASCRIPT_API_KEY: Optional[str] = None
+
     # Database (PostgreSQL optional & MongoDB)
     DATABASE_URL: str = ""
     MONGODB_URL: str = "mongodb://localhost:27017"

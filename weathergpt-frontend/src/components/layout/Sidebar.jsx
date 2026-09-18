@@ -8,7 +8,8 @@ import {
   BarChart3, 
   Settings,
   Sparkles,
-  Zap
+  Zap,
+  Users
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWeather } from '../../context/WeatherContext';
@@ -37,6 +38,13 @@ export function Sidebar() {
       icon: Map,
       badge: 'Live',
       badgeClass: 'bg-emerald-500 text-white'
+    },
+    {
+      to: '/community-reports',
+      label: t('navCommunityReports') || 'Community Reports',
+      icon: Users,
+      badge: 'Live',
+      badgeClass: 'bg-teal-500 text-white'
     },
     {
       to: '/alerts',

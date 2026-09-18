@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Bot, Map, AlertTriangle, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Bot, Map, AlertTriangle, BarChart3, Settings, Users } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWeather } from '../../context/WeatherContext';
 
@@ -12,6 +12,7 @@ export function MobileNav() {
     { to: '/', label: t('navAssistant') || 'Assistant', icon: Bot, isSpecial: true },
     { to: '/dashboard', label: t('navDashboard'), icon: LayoutDashboard },
     { to: '/map', label: t('navMap'), icon: Map },
+    { to: '/community-reports', label: t('navCommunityReports') || 'Reports', icon: Users },
     { to: '/alerts', label: t('navAlerts'), icon: AlertTriangle, badge: alerts?.length > 0 ? alerts.length : null },
     { to: '/climate', label: t('navClimate'), icon: BarChart3 },
     { to: '/settings', label: t('navSettings'), icon: Settings }

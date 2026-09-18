@@ -16,6 +16,7 @@ import { WeatherMapPage } from './pages/WeatherMapPage';
 import { Alerts } from './pages/Alerts';
 import { Climate } from './pages/Climate';
 import { Settings } from './pages/Settings';
+import { CommunityReports } from './pages/CommunityReports';
 
 import { AlertToast } from './components/alerts/AlertToast';
 import { useWeather } from './context/WeatherContext';
@@ -47,6 +48,7 @@ function AppContent() {
             <Route path="/assistant" element={<Navigate to="/" replace />} />
             <Route path="/map" element={<WeatherMapPage />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/community-reports" element={<CommunityReports />} />
             <Route path="/climate" element={<Climate />} />
             <Route path="/climate-analytics" element={<Climate />} />
             <Route path="/settings" element={<Settings />} />

@@ -31,6 +31,8 @@ services:
       dockerfile: Dockerfile
     container_name: weathergpt-backend
     restart: unless-stopped
+    env_file:
+      - ./weathergpt-backend/.env
     environment:
       - ENVIRONMENT=production
       - DEBUG=false
@@ -44,6 +46,11 @@ services:
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_URL=${CLOUDINARY_URL:-}
+      - CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER:-weathergpt/community_reports}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-weathergpt-super-secure-production-jwt-token-key-2026}
     depends_on:
       mongodb:

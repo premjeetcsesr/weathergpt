@@ -55,3 +55,39 @@ export function createAlertMarkerIcon(alertTitle = "Alert", severity = "Severe")
     popupAnchor: [0, -18]
   });
 }
+
+export function createCommunityMarkerIcon(category = "incident", icon = "📍", isVerified = true, isAlertPulse = false) {
+  const bgClass = isVerified
+    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 ring-2 ring-emerald-300'
+    : 'bg-gradient-to-tr from-amber-600 to-orange-500 ring-2 ring-amber-300';
+
+  const pulseRings = isAlertPulse
+    ? `
+      <div class="absolute -inset-3 rounded-full bg-red-500/50 animate-ping pointer-events-none"></div>
+      <div class="absolute -inset-1.5 rounded-full bg-amber-400/40 animate-pulse pointer-events-none"></div>
+    `
+    : '';
+
+  const html = `
+    <div class="relative group cursor-pointer" style="transform: translate(-50%, -50%);">
+      ${pulseRings}
+      <div class="w-8 h-8 rounded-full ${bgClass} flex items-center justify-center text-sm shadow-elevated border-2 border-white dark:border-slate-900 transition-transform duration-200 hover:scale-110">
+        <span>${icon}</span>
+      </div>
+      ${
+        isVerified
+          ? '<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border border-white rounded-full flex items-center justify-center text-[8px] text-white font-bold">✓</span>'
+          : '<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 border border-white rounded-full flex items-center justify-center text-[8px] text-white font-bold">⏳</span>'
+      }
+    </div>
+  `;
+
+  return L.divIcon({
+    html: html,
+    className: 'custom-community-leaflet-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+

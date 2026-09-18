@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { WeatherMap } from '../components/map/WeatherMap';
 import { SearchBar } from '../components/common/SearchBar';
 import { useLanguage } from '../context/LanguageContext';
@@ -8,6 +9,13 @@ import { Map, Info, Sparkles } from 'lucide-react';
 export function WeatherMapPage() {
   const { t } = useLanguage();
   const { selectedCity } = useWeather();
+  const [searchParams] = useSearchParams();
+
+  const latParam = searchParams.get('lat');
+  const lonParam = searchParams.get('lon');
+  const reportId = searchParams.get('reportId');
+
+  const focusCoords = latParam && lonParam ? [parseFloat(latParam), parseFloat(lonParam)] : null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -35,7 +43,11 @@ export function WeatherMapPage() {
 
       {/* Map Card */}
       <div className="relative">
-        <WeatherMap height="620px" />
+        <WeatherMap
+          height="620px"
+          focusCoords={focusCoords}
+          focusReportId={reportId}
+        />
       </div>
 
       {/* Info Callout */}

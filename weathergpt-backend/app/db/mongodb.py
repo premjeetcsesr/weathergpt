@@ -139,6 +139,14 @@ async def create_mongo_indexes(db: AsyncIOMotorDatabase) -> None:
         await db.provider_status.create_index([("provider_name", pymongo.ASCENDING)])
         await db.provider_status.create_index([("last_checked", pymongo.DESCENDING)])
 
+        # 14. Community Weather Reports collection indexes
+        await db.community_reports.create_index([("location", pymongo.GEOSPHERE)])
+        await db.community_reports.create_index([("category", pymongo.ASCENDING)])
+        await db.community_reports.create_index([("status", pymongo.ASCENDING)])
+        await db.community_reports.create_index([("reported_at", pymongo.DESCENDING)])
+        await db.community_reports.create_index([("user_id", pymongo.ASCENDING)])
+        await db.community_reports.create_index([("created_at", pymongo.DESCENDING)])
+
         logger.info("MongoDB indexes verified/created successfully.")
     except Exception as exc:
         logger.warning(f"Could not create MongoDB indexes: {exc}")

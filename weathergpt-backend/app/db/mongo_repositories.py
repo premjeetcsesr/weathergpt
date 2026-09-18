@@ -8,9 +8,10 @@ Asynchronous MongoDB Repositories using Motor:
 
 import math
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from bson import ObjectId
+import pymongo
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.logging import logger
 from app.core.security import hash_password
@@ -1220,5 +1221,246 @@ class MongoProviderStatusRepository:
         cursor = self.collection.find({}).sort("last_checked", -1)
         docs = await cursor.to_list(length=20)
         return [serialize_doc(d) for d in docs if d]
+
+
+# ===========================================================================
+# 13. Community Weather Reports Repository
+# ===========================================================================
+
+def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance in kilometers between two GPS coordinate points."""
+    import math
+    R = 6371.0  # Earth's radius in kilometers
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(R * c, 2)
+
+
+def to_oid(val: Any) -> Any:
+    """Convert string to ObjectId if valid, else return as is."""
+    if isinstance(val, str) and ObjectId.is_valid(val):
+        return ObjectId(val)
+    return val
+
+
+class MongoCommunityReportRepository:
+    """Repository for Community Weather Reports with GeoJSON support and moderation workflow."""
+
+    def __init__(self, db: Optional[AsyncIOMotorDatabase] = None):
+        self.db = db
+        self.collection = db.community_reports if db is not None else None
+
+    async def create_report(self, report_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Insert a newly created community report."""
+        if self.collection is None:
+            doc = dict(report_data)
+            doc["id"] = "mock_report_" + str(datetime.now(timezone.utc).timestamp())
+            return doc
+
+        doc = dict(report_data)
+        now = datetime.now(timezone.utc)
+        if "created_at" not in doc:
+            doc["created_at"] = now
+        if "reported_at" not in doc:
+            doc["reported_at"] = now
+        if "updated_at" not in doc:
+            doc["updated_at"] = now
+        if "status" not in doc:
+            doc["status"] = "PENDING"
+
+        result = await self.collection.insert_one(doc)
+        doc["_id"] = result.inserted_id
+        return serialize_doc(doc)
+
+    async def get_by_id(self, report_id: str) -> Optional[Dict[str, Any]]:
+        """Find a report by its MongoDB ObjectId or string id."""
+        if self.collection is None:
+            return None
+
+        oid = to_oid(report_id)
+        query = {"_id": oid}
+        doc = await self.collection.find_one(query)
+        return serialize_doc(doc) if doc else None
+
+    async def list_reports(
+        self,
+        category: Optional[str] = None,
+        status: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """Fetch filtered community reports with total count."""
+        if self.collection is None:
+            return [], 0
+
+        query: Dict[str, Any] = {}
+        if category:
+            query["category"] = category.lower().strip()
+        if status:
+            query["status"] = status.upper().strip()
+        if start_time:
+            query["reported_at"] = {"$gte": start_time}
+
+        total = await self.collection.count_documents(query)
+        cursor = self.collection.find(query).sort("reported_at", -1).skip(skip).limit(limit)
+        docs = await cursor.to_list(length=limit)
+        return [serialize_doc(d) for d in docs if d], total
+
+    async def get_nearby_reports(
+        self,
+        latitude: float,
+        longitude: float,
+        radius_km: float = 25.0,
+        category: Optional[str] = None,
+        status: Optional[str] = "VERIFIED",
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Query nearby reports using geospatial indexing with Haversine distance fallback."""
+        if self.collection is None:
+            return []
+
+        base_query: Dict[str, Any] = {}
+        if status:
+            base_query["status"] = status.upper().strip()
+        if category:
+            base_query["category"] = category.lower().strip()
+
+        # Try MongoDB 2dsphere nearSphere query first
+        reports = []
+        try:
+            geo_query = dict(base_query)
+            geo_query["location"] = {
+                "$nearSphere": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [longitude, latitude],
+                    },
+                    "$maxDistance": radius_km * 1000,  # meters
+                }
+            }
+            cursor = self.collection.find(geo_query).limit(limit)
+            docs = await cursor.to_list(length=limit)
+            for d in docs:
+                s = serialize_doc(d)
+                coords = s.get("location", {}).get("coordinates", [0, 0])
+                if len(coords) >= 2:
+                    dist = haversine_distance_km(latitude, longitude, coords[1], coords[0])
+                    s["distance_km"] = dist
+                reports.append(s)
+            return reports
+        except Exception:
+            # Fallback for environments / mock clients without 2dsphere indexing support
+            pass
+
+        cursor = self.collection.find(base_query).sort("reported_at", -1).limit(limit * 2)
+        docs = await cursor.to_list(length=limit * 2)
+        filtered = []
+        for d in docs:
+            s = serialize_doc(d)
+            coords = s.get("location", {}).get("coordinates", [0, 0])
+            if len(coords) >= 2:
+                dist = haversine_distance_km(latitude, longitude, coords[1], coords[0])
+                if dist <= radius_km:
+                    s["distance_km"] = dist
+                    filtered.append(s)
+        filtered.sort(key=lambda x: x.get("distance_km", 9999))
+        return filtered[:limit]
+
+    async def get_user_reports(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch all reports submitted by a specific user across all statuses."""
+        if self.collection is None:
+            return []
+
+        cursor = self.collection.find({"user_id": str(user_id)}).sort("reported_at", -1).limit(limit)
+        docs = await cursor.to_list(length=limit)
+        return [serialize_doc(d) for d in docs if d]
+
+    async def update_status(
+        self,
+        report_id: str,
+        status: str,
+        verified_by: Optional[str] = None,
+        rejection_reason: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Update report moderation status (VERIFIED or REJECTED)."""
+        if self.collection is None:
+            return None
+
+        oid = to_oid(report_id)
+        query = {"_id": oid}
+
+        now = datetime.now(timezone.utc)
+        update_fields: Dict[str, Any] = {
+            "status": status.upper().strip(),
+            "updated_at": now,
+        }
+
+        if status.upper() == "VERIFIED":
+            update_fields["verified_at"] = now
+            update_fields["verified_by"] = verified_by
+            update_fields["rejection_reason"] = None
+        elif status.upper() == "REJECTED":
+            update_fields["rejection_reason"] = rejection_reason
+            update_fields["verified_at"] = None
+            update_fields["verified_by"] = verified_by
+
+        result = await self.collection.find_one_and_update(
+            query,
+            {"$set": update_fields},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return serialize_doc(result) if result else None
+
+    async def delete_report(self, report_id: str) -> bool:
+        """Delete a community report by ID."""
+        if self.collection is None:
+            return False
+
+        oid = to_oid(report_id)
+        query = {"_id": oid}
+        result = await self.collection.delete_one(query)
+        return result.deleted_count > 0
+
+    async def check_recent_duplicate(
+        self,
+        user_id: str,
+        category: str,
+        description: str,
+        window_seconds: int = 120,
+    ) -> bool:
+        """Prevent duplicate submissions within a short time window."""
+        if self.collection is None:
+            return False
+
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+        doc = await self.collection.find_one(
+            {
+                "user_id": str(user_id),
+                "category": category.lower().strip(),
+                "description": description.strip(),
+                "created_at": {"$gte": cutoff},
+            }
+        )
+        return doc is not None
+
+    async def count_user_recent_reports(self, user_id: str, window_seconds: int = 600) -> int:
+        """Count reports submitted by user within window (rate limiting)."""
+        if self.collection is None:
+            return 0
+
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+        return await self.collection.count_documents(
+            {
+                "user_id": str(user_id),
+                "created_at": {"$gte": cutoff},
+            }
+        )
+
 
 

@@ -25,8 +25,11 @@ export const translations = {
     navAssistant: 'AI Assistant',
     navMap: 'Weather Map',
     navAlerts: 'Weather Alerts',
+    navCommunityReports: 'Community Reports',
     navClimate: 'Climate Analytics',
     navSettings: 'Settings',
+    reportIncidentBtn: 'Report Hazard (Current Location)',
+    communityAlertTitle: 'Live Community Hazard Alert',
 
     // Current Weather
     currentWeather: 'Current Weather',
@@ -143,8 +146,11 @@ export const translations = {
     navAssistant: 'एआई सहायक',
     navMap: 'मौसम मानचित्र',
     navAlerts: 'मौसम चेतावनियां',
+    navCommunityReports: 'सामुदायिक रिपोर्ट',
     navClimate: 'जलवायु विश्लेषण',
     navSettings: 'सेटिंग्स',
+    reportIncidentBtn: 'घटना रिपोर्ट करें (वर्तमान स्थान)',
+    communityAlertTitle: 'लाइव सामुदायिक मौसम अलर्ट',
 
     currentWeather: 'वर्तमान मौसम',
     feelsLike: 'महसूस होता है',

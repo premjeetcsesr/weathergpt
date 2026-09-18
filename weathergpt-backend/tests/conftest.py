@@ -23,11 +23,14 @@ from app.api.deps import (
     get_weather_provider,
     get_weather_service,
     get_websocket_manager,
+    get_community_report_repo,
+    get_cloudinary_service,
 )
 from app.db.mongo_repositories import (
     MongoAlertRepository,
     MongoAlertSubscriptionRepository,
     MongoChatHistoryRepository,
+    MongoCommunityReportRepository,
     MongoLocationRepository,
     MongoNotificationHistoryRepository,
     MongoNotificationRepository,
@@ -49,6 +52,28 @@ from app.services.forecast_service import ForecastService
 from app.services.geocoding_service import GeocodingService
 from app.services.llm_service import LLMService
 from app.services.weather_service import WeatherService
+from app.services.cloudinary_service import CloudinaryService
+
+
+class MockCloudinaryService(CloudinaryService):
+    """Deterministic mock for Cloudinary image upload and deletion in tests."""
+
+    def __init__(self):
+        super().__init__()
+        self._configured = True
+
+    async def upload_image(self, file_bytes: bytes, filename: str) -> Dict[str, Any]:
+        return {
+            "url": f"https://res.cloudinary.com/demo/image/upload/v12345/mock_{filename}",
+            "public_id": f"weathergpt/community_reports/mock_{filename}",
+            "format": "jpg",
+            "bytes": len(file_bytes),
+            "width": 800,
+            "height": 600,
+        }
+
+    async def delete_image(self, public_id: str) -> bool:
+        return True
 
 
 class MockWeatherProvider(BaseWeatherProvider):
@@ -183,6 +208,8 @@ async def async_client(mock_provider: MockWeatherProvider, mock_mongo_db) -> Asy
     warning_repo = MongoOfficialWarningRepository(db=mock_mongo_db)
     advisory_repo = MongoAdvisoryRepository(db=mock_mongo_db)
     provider_status_repo = MongoProviderStatusRepository(db=mock_mongo_db)
+    community_report_repo = MongoCommunityReportRepository(db=mock_mongo_db)
+    mock_cloudinary_svc = MockCloudinaryService()
 
     app.dependency_overrides[get_mongo_db] = lambda: mock_mongo_db
     app.dependency_overrides[get_user_repo] = lambda: user_repo
@@ -196,6 +223,8 @@ async def async_client(mock_provider: MockWeatherProvider, mock_mongo_db) -> Asy
     app.dependency_overrides[get_official_warning_repo] = lambda: warning_repo
     app.dependency_overrides[get_advisory_repo] = lambda: advisory_repo
     app.dependency_overrides[get_provider_status_repo] = lambda: provider_status_repo
+    app.dependency_overrides[get_community_report_repo] = lambda: community_report_repo
+    app.dependency_overrides[get_cloudinary_service] = lambda: mock_cloudinary_svc
 
     app.dependency_overrides[get_weather_provider] = lambda: mock_provider
     app.dependency_overrides[get_weather_service] = lambda: weather_svc

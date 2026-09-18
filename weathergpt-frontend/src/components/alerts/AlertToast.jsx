@@ -61,7 +61,11 @@ export function AlertToast({ alert, onDismiss }) {
 
   const handleView = () => {
     onDismiss();
-    navigate('/alerts');
+    if (alert.is_community && alert.coordinates && alert.coordinates.length === 2) {
+      navigate(`/map?lat=${alert.coordinates[0]}&lon=${alert.coordinates[1]}&reportId=${alert.report?.id || ''}`);
+    } else {
+      navigate('/alerts');
+    }
   };
 
   const locName = typeof alert.location === 'object'
@@ -74,10 +78,10 @@ export function AlertToast({ alert, onDismiss }) {
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${badgeBg}`}>
-              {alert.severity || 'ALERT'}
+              {alert.is_community ? 'COMMUNITY REPORT' : (alert.severity || 'ALERT')}
             </span>
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-              LIVE METEOROLOGICAL ALERT
+              {alert.is_community ? 'CITIZEN OBSERVATION' : 'LIVE METEOROLOGICAL ALERT'}
             </span>
           </div>
           <button
@@ -117,7 +121,7 @@ export function AlertToast({ alert, onDismiss }) {
             onClick={handleView}
             className="px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
-            <span>View All Alerts</span>
+            <span>{alert.is_community ? 'View on Map 📍' : 'View All Alerts'}</span>
             <ExternalLink className="w-3 h-3" />
           </button>
         </div>

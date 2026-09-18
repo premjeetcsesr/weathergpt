@@ -21,10 +21,10 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
   const isMountedRef = useRef(true);
 
   const subscribeCity = useCallback((city) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && city) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && typeof city === 'string' && city.trim()) {
       wsRef.current.send(JSON.stringify({
         type: 'subscribe',
-        location: { city },
+        location: { city: city.trim() },
       }));
     }
   }, []);
@@ -47,10 +47,11 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
         reconnectAttemptRef.current = 0;
 
         // Immediately subscribe to current active location
-        if (activeCity) {
+        const city = typeof activeCity === 'string' ? activeCity.trim() : '';
+        if (city) {
           socket.send(JSON.stringify({
             type: 'subscribe',
-            location: { city: activeCity },
+            location: { city },
           }));
         }
 
@@ -70,6 +71,11 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
 
           if (data.type === 'weather_alert') {
             const newAlert = data.alert;
+            if (!newAlert || typeof newAlert !== 'object') {
+              console.warn('Ignoring WebSocket alert with invalid payload:', data);
+              return;
+            }
+
             setActiveAlerts((prev) => {
               const existingIdx = prev.findIndex((a) => (a.id || a.alert_id) === (newAlert.id || newAlert.alert_id));
               if (existingIdx >= 0) {
@@ -87,6 +93,28 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
             const expId = data.alert_id;
             setActiveAlerts((prev) => prev.filter((a) => (a.id || a.alert_id) !== expId));
             if (onAlertExpired) onAlertExpired(expId);
+          } else if (data.type === 'community_report_created' || data.type === 'community_report_verified') {
+            const rep = data.report;
+            if (rep) {
+              const isVerified = data.type === 'community_report_verified';
+              const catFormatted = (rep.category || 'Incident').replace('_', ' ').toUpperCase();
+              const alertItem = {
+                id: `comm_${rep.id}`,
+                type: 'community_report',
+                event: isVerified ? 'Verified Community Report' : 'Community Weather Report',
+                severity: isVerified ? 'Severe' : 'Moderate',
+                headline: `📸 ${catFormatted} at ${rep.location_name || 'Ground Location'}`,
+                description: `Citizen ground-truth observation reported. View live pin on Weather Map.`,
+                area_desc: rep.location_name || 'Ground Observation',
+                source: 'COMMUNITY',
+                is_community: true,
+                created_at: rep.reported_at || new Date().toISOString(),
+              };
+              setLatestToast(alertItem);
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('community-report-added', { detail: rep }));
+              }
+            }
           }
         } catch (e) {
           console.warn('Failed to parse WebSocket message:', e);
@@ -94,7 +122,8 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
       };
 
       socket.onclose = () => {
-        if (!isMountedRef.current) return;
+        // Ignore close events from sockets replaced by a newer connection.
+        if (!isMountedRef.current || wsRef.current !== socket) return;
         setStatus('disconnected');
         clearInterval(pingIntervalRef.current);
 
@@ -131,6 +160,7 @@ export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAl
       clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [connect]);

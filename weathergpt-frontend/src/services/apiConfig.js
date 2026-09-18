@@ -4,7 +4,7 @@
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-export const USE_MOCK_DATA = false;
+export const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // Provider keys are securely managed on the backend server; frontend never handles external secrets.
 export const OPENWEATHER_API_KEY = '';
@@ -12,13 +12,20 @@ export const OPENWEATHER_API_KEY = '';
 // CARTO API configuration (Optional)
 export const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
 
+export const GOOGLE_MAPS_JAVASCRIPT_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_JAVASCRIPT_API_KEY || '';
+
 // Secure backend map tile proxy
 export const MAP_TILE_BASE_URL = `${API_BASE_URL}/weather/tiles`;
 
 // Environment-aware WebSocket URL (auto-upgrades to wss:// over HTTPS)
 function getWebSocketUrl() {
   if (import.meta.env.VITE_WS_BASE_URL) {
-    return import.meta.env.VITE_WS_BASE_URL;
+    const configuredUrl = import.meta.env.VITE_WS_BASE_URL;
+    if (configuredUrl.startsWith('http://') || configuredUrl.startsWith('https://')) {
+      return configuredUrl.replace(/^http/, 'ws');
+    }
+    return configuredUrl;
   }
   if (typeof window !== 'undefined') {
     const isHttps = window.location.protocol === 'https:';
@@ -82,7 +89,11 @@ export const ENDPOINTS = {
   WEATHER_SATELLITE_LAYER: `${API_BASE_URL}/weather/satellite/layer`,
   WEATHER_SATELLITE_TILES: `${API_BASE_URL}/weather/satellite/tiles`,
   WEATHER_SATELLITE_IMAGE: `${API_BASE_URL}/weather/satellite/image`,
+  // Community Weather Reports
+  COMMUNITY_REPORTS: `${API_BASE_URL}/community-reports`,
+  COMMUNITY_REPORTS_CATEGORIES: `${API_BASE_URL}/community-reports/categories`,
+  COMMUNITY_REPORTS_NEARBY: `${API_BASE_URL}/community-reports/nearby`,
+  COMMUNITY_REPORTS_MY: `${API_BASE_URL}/community-reports/my-reports`,
 };
 
 export const REQUEST_TIMEOUT = 10000; // 10 seconds
-

@@ -26,7 +26,9 @@ export function Settings() {
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, openAuthModal, logout, updatePreferences } = useAuth();
 
-  const [pushAlerts, setPushAlerts] = useState(true);
+  const [pushAlerts, setPushAlerts] = useState(() => (
+    localStorage.getItem('weathergpt_push_alerts') !== 'false'
+  ));
   const [morningDigest, setMorningDigest] = useState(true);
   const [rainWarnings, setRainWarnings] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -56,6 +58,14 @@ export function Settings() {
 
     setShowSavedToast(true);
     setTimeout(() => setShowSavedToast(false), 3000);
+  };
+
+  const handlePushAlertsChange = async (enabled) => {
+    setPushAlerts(enabled);
+    localStorage.setItem('weathergpt_push_alerts', String(enabled));
+    if (enabled && 'Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
   };
 
   return (
@@ -311,7 +321,7 @@ export function Settings() {
               <input
                 type="checkbox"
                 checked={pushAlerts}
-                onChange={(e) => setPushAlerts(e.target.checked)}
+                onChange={(e) => handlePushAlertsChange(e.target.checked)}
                 className="w-4 h-4 accent-brand-500 rounded"
               />
             </label>

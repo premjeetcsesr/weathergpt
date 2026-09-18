@@ -83,20 +83,16 @@ function formatUnixTime(timestamp, timezoneOffsetSec = 0) {
  */
 function mapAirQuality(pollutionData) {
   if (!pollutionData || !pollutionData.list || !pollutionData.list[0]) {
-    return {
-      aqi: 68,
-      pm2_5: 22.4,
-      pm10: 45.0,
-      label: 'Moderate',
-      color: 'text-amber-500',
-      advice: 'Air quality is acceptable for most individuals.'
-    };
+    return null;
   }
 
   const item = pollutionData.list[0];
-  const aqiLevel = item.main?.aqi || 2;
-  const pm2_5 = item.components?.pm2_5 || 24;
-  const pm10 = item.components?.pm10 || 48;
+  const aqiLevel = item.main?.aqi;
+  const pm2_5 = item.components?.pm2_5;
+  const pm10 = item.components?.pm10;
+  if (!Number.isFinite(aqiLevel) || !Number.isFinite(pm2_5) || !Number.isFinite(pm10)) {
+    return null;
+  }
 
   switch (aqiLevel) {
     case 1:
@@ -145,14 +141,7 @@ function mapAirQuality(pollutionData) {
         advice: 'Health alert: avoid outdoor activities; keep windows and vents closed.'
       };
     default:
-      return {
-        aqi: 80,
-        pm2_5: Number(pm2_5.toFixed(1)),
-        pm10: Number(pm10.toFixed(1)),
-        label: 'Moderate',
-        color: 'text-amber-500',
-        advice: 'Sensitive individuals should take precautions.'
-      };
+      return null;
   }
 }
 

@@ -12,6 +12,7 @@ import { WeatherRiskIndicator } from '../components/dashboard/WeatherRiskIndicat
 import { NowcastCard } from '../components/dashboard/NowcastCard';
 import { ActionableAdvisoryCard } from '../components/dashboard/ActionableAdvisoryCard';
 import { SourceTransparencyBadge } from '../components/dashboard/SourceTransparencyBadge';
+import { SafetyModes } from '../components/dashboard/SafetyModes';
 import { fetchAdvancedWeather } from '../services/advancedWeatherApi';
 import { Loading } from '../components/common/Loading';
 import { ErrorMessage } from '../components/common/ErrorMessage';
@@ -96,6 +97,7 @@ export function Dashboard() {
 
           {/* AI Weather Insight Card */}
           <AIInsight />
+          <SafetyModes weatherData={weatherData} advancedData={advancedData} />
         </div>
 
         {/* Right Column (4 cols on lg) */}
