@@ -44,7 +44,7 @@ export function ClimateAnalytics() {
   const { currentLanguage, t } = useLanguage();
 
   // Location search state
-  const [activeCity, setActiveCity] = useState(selectedCity || 'Kanpur');
+  const [activeCity, setActiveCity] = useState(selectedCity || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -314,7 +314,7 @@ export function ClimateAnalytics() {
           </p>
           <div className="pt-2">
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Try selecting a primary observatory location such as <strong>Kanpur, New Delhi, Mumbai, Varanasi, or Bengaluru</strong>.
+              Search for a city to load its live climate analytics.
             </span>
           </div>
         </div>

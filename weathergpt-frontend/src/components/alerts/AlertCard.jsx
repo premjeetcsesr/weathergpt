@@ -30,8 +30,8 @@ export function AlertCard({ alert }) {
   }[sevLower] || "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
 
   const locationName = typeof alert.location === 'object' && alert.location !== null
-    ? alert.location.name || alert.location.city || 'Kanpur'
-    : alert.location || 'Kanpur';
+    ? alert.location.name || alert.location.city || 'Unknown location'
+    : alert.location || 'Unknown location';
 
   const eventTitle = alert.event || alert.title || 'Meteorological Advisory';
   const instruction = alert.instruction || alert.safety_recommendation || alert.safetyRecommendation;

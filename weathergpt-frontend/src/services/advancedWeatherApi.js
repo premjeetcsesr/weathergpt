@@ -29,7 +29,7 @@ async function request(url, options = {}) {
   }
 }
 
-export async function fetchAdvancedWeather(city = 'Kanpur', lat = null, lon = null) {
+export async function fetchAdvancedWeather(city = '', lat = null, lon = null) {
   const params = new URLSearchParams();
   if (city) params.append('city', city);
   if (lat !== null && lon !== null) {
@@ -39,7 +39,7 @@ export async function fetchAdvancedWeather(city = 'Kanpur', lat = null, lon = nu
   return await request(`${ENDPOINTS.WEATHER_ADVANCED}?${params.toString()}`);
 }
 
-export async function fetchNowcast(city = 'Kanpur', lat = null, lon = null) {
+export async function fetchNowcast(city = '', lat = null, lon = null) {
   const params = new URLSearchParams();
   if (city) params.append('city', city);
   if (lat !== null && lon !== null) {
@@ -49,19 +49,19 @@ export async function fetchNowcast(city = 'Kanpur', lat = null, lon = null) {
   return await request(`${ENDPOINTS.WEATHER_NOWCAST}?${params.toString()}`);
 }
 
-export async function fetchOfficialWarnings(city = 'Kanpur') {
+export async function fetchOfficialWarnings(city = '') {
   return await request(`${ENDPOINTS.WEATHER_WARNINGS}?city=${encodeURIComponent(city)}`);
 }
 
-export async function fetchSevereWeather(city = 'Kanpur') {
+export async function fetchSevereWeather(city = '') {
   return await request(`${ENDPOINTS.WEATHER_SEVERE}?city=${encodeURIComponent(city)}`);
 }
 
-export async function fetchWeatherAdvisory(city = 'Kanpur') {
+export async function fetchWeatherAdvisory(city = '') {
   return await request(`${ENDPOINTS.WEATHER_ADVISORY}?city=${encodeURIComponent(city)}`);
 }
 
-export async function fetchWeatherSource(city = 'Kanpur') {
+export async function fetchWeatherSource(city = '') {
   return await request(`${ENDPOINTS.WEATHER_SOURCE}?city=${encodeURIComponent(city)}`);
 }
 

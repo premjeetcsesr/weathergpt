@@ -9,7 +9,7 @@ import { WS_ALERTS_URL } from './apiConfig';
  * - Location-based topic subscription
  * - Heartbeat ping
  */
-export function useAlertWebSocket({ activeCity = 'Kanpur', onAlertReceived, onAlertExpired } = {}) {
+export function useAlertWebSocket({ activeCity = '', onAlertReceived, onAlertExpired } = {}) {
   const [status, setStatus] = useState('connecting'); // 'connected' | 'connecting' | 'disconnected'
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [latestToast, setLatestToast] = useState(null);

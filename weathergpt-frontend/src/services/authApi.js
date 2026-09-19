@@ -79,7 +79,7 @@ export async function registerUser({ email, username, password, fullName, prefer
           unit: 'celsius',
           theme: 'dark',
           language: 'en',
-          default_city: 'Kanpur',
+          default_city: '',
         },
       }),
     });

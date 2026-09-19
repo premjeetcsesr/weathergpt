@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import (
     get_current_user_optional,
@@ -46,7 +46,12 @@ async def get_current_weather(
         resolved_city = city or f"Coord({lat:.2f},{lon:.2f})"
         data = await weather_service.get_current_weather(city=resolved_city, lat=lat, lon=lon)
     else:
-        validated_city = validate_city_name(city or "Kanpur")
+        if not city or not city.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Provide a city name or latitude and longitude.",
+            )
+        validated_city = validate_city_name(city)
         data = await weather_service.get_current_weather(city=validated_city)
 
     # 1. Log to MongoDB weather_history
@@ -186,5 +191,4 @@ async def proxy_weather_tile(
         b"\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82"
     )
     return Response(content=transparent_png, media_type="image/png")
-
 

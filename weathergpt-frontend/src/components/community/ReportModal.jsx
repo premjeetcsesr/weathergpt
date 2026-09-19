@@ -353,7 +353,7 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
               type="text"
               value={locationName}
               onChange={(e) => setLocationName(e.target.value)}
-              placeholder="Landmark or locality (e.g. Civil Lines, Kanpur)"
+              placeholder="Landmark or locality"
               className="w-full text-xs p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-all"
             />
           </div>

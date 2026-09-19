@@ -431,7 +431,7 @@ export function CommunityReports() {
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
                     <span className="flex items-center gap-1 truncate max-w-[180px]">
                       <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
-                      <span className="truncate">{report.location_name || 'Kanpur'}</span>
+                      <span className="truncate">{report.location_name || 'Unknown location'}</span>
                     </span>
                     <span className="text-[10px] font-semibold text-slate-400">
                       Community Report

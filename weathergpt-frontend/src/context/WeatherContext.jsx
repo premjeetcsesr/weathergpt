@@ -15,7 +15,7 @@ const WeatherContext = createContext();
 
 export function WeatherProvider({ children }) {
   const [selectedCity, setSelectedCity] = useState(() => {
-    return localStorage.getItem('weathergpt_city') || defaultCity;
+    return localStorage.getItem('weathergpt_city_v2') || defaultCity;
   });
 
   const [weatherData, setWeatherData] = useState(null);
@@ -46,7 +46,7 @@ export function WeatherProvider({ children }) {
       const saved = localStorage.getItem('weathergpt_recent_searches');
       return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['Kanpur', 'New Delhi', 'Mumbai', 'Bengaluru'];
+      return [];
     }
   });
 
@@ -80,7 +80,11 @@ export function WeatherProvider({ children }) {
 
   // Persist preferences
   useEffect(() => {
-    localStorage.setItem('weathergpt_city', selectedCity);
+    if (selectedCity) {
+      localStorage.setItem('weathergpt_city_v2', selectedCity);
+    } else {
+      localStorage.removeItem('weathergpt_city_v2');
+    }
   }, [selectedCity]);
 
   useEffect(() => {
@@ -97,6 +101,15 @@ export function WeatherProvider({ children }) {
 
   // Load weather for city
   const loadCityWeather = useCallback(async (city) => {
+    if (!city || !city.trim()) {
+      setWeatherData(null);
+      setHourlyForecast([]);
+      setDailyForecast([]);
+      setAlerts([]);
+      setLoading(false);
+      setError('Search for a city or allow location access to load live weather.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -108,22 +121,6 @@ export function WeatherProvider({ children }) {
 
       if (currentRes.success && currentRes.data) {
         setWeatherData(currentRes.data);
-      } else if (city.toLowerCase() !== defaultCity.toLowerCase()) {
-        console.warn(`Weather load failed for ${city}, falling back to default city ${defaultCity}`);
-        const [fallbackCur, fallbackFc] = await Promise.all([
-          getCurrentWeather(defaultCity),
-          getForecast(defaultCity),
-        ]);
-        if (fallbackCur.success && fallbackCur.data) {
-          setWeatherData(fallbackCur.data);
-          setSelectedCity(defaultCity);
-          if (fallbackFc.success) {
-            setHourlyForecast(fallbackFc.hourly || []);
-            setDailyForecast(fallbackFc.daily || []);
-          }
-        } else {
-          throw new Error(currentRes.error || 'Failed to load weather data');
-        }
       } else {
         throw new Error(currentRes.error || 'Failed to load weather data');
       }
@@ -198,11 +195,17 @@ export function WeatherProvider({ children }) {
       (geoError) => {
         console.warn('Geolocation access denied or timed out:', geoError.message);
         setIsLocating(false);
-        alert('Could not determine exact location. Showing default city (Kanpur).');
+        alert('Could not determine your location. Search for a city instead.');
       },
       { timeout: 8000 }
     );
   };
+
+  useEffect(() => {
+    if (!selectedCity) {
+      useCurrentLocation();
+    }
+  }, [selectedCity]);
 
   // Temperature unit conversion helper
   const formatTemp = (tempInCelsius) => {

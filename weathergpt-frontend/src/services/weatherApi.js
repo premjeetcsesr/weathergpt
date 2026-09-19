@@ -1,7 +1,7 @@
 import { ENDPOINTS } from './apiConfig';
 import { getAuthHeaders } from './authApi';
 
-export const defaultCity = 'Kanpur';
+export const defaultCity = '';
 
 /**
  * Capitalize first letter of string

@@ -428,7 +428,7 @@ export function Navbar() {
                           <MapPin className="w-3.5 h-3.5 text-brand-500" /> Default City
                         </span>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {user.preferences?.default_city || 'Kanpur'}
+                          {user.preferences?.default_city || 'No location selected'}
                         </span>
                       </div>
 

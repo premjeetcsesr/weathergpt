@@ -51,7 +51,7 @@ export function Settings() {
       await updatePreferences({
         unit: tempUnit === 'C' ? 'celsius' : 'fahrenheit',
         language: currentLanguage,
-        default_city: defaultCityInput.trim() || 'Kanpur',
+        default_city: defaultCityInput.trim(),
         theme: theme === 'system' ? 'dark' : theme,
       });
     }

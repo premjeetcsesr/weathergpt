@@ -30,18 +30,6 @@ import {
   fetchSatelliteLayer
 } from '../../services/radarSatelliteApi';
 
-// Key meteorological anchor cities across India for regional context
-const REGIONAL_HUBS = [
-  { city: 'Kanpur', state: 'Uttar Pradesh', lat: 26.4499, lon: 80.3319 },
-  { city: 'New Delhi', state: 'Delhi', lat: 28.6139, lon: 77.2090 },
-  { city: 'Mumbai', state: 'Maharashtra', lat: 19.0760, lon: 72.8777 },
-  { city: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lon: 77.5946 },
-  { city: 'Kolkata', state: 'West Bengal', lat: 22.5726, lon: 88.3639 },
-  { city: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lon: 80.2707 },
-  { city: 'Hyderabad', state: 'Telangana', lat: 17.3850, lon: 78.4867 },
-  { city: 'Ahmedabad', state: 'Gujarat', lat: 23.0225, lon: 72.5714 },
-];
-
 function formatISTTime(isoTimestamp) {
   if (!isoTimestamp) {
     return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ' IST';
@@ -204,8 +192,8 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
     return () => { isCurrent = false; };
   }, [activeLayer, radarProduct, satelliteProduct]);
 
-  // Center on currently selected city or default
-  const defaultCenter = [26.4499, 80.3319]; // Kanpur coordinates
+  // Center on the live location returned by the backend.
+  const defaultCenter = [20, 0];
   const currentCenter = weatherData?.location?.lat && weatherData?.location?.lon
     ? [weatherData.location.lat, weatherData.location.lon]
     : defaultCenter;
@@ -713,41 +701,6 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
             </Popup>
           </Marker>
         )}
-
-        {/* Regional Anchor Cities */}
-        {REGIONAL_HUBS.filter(
-          (h) => h.city.toLowerCase() !== selectedCity.toLowerCase()
-        ).map((item) => (
-          <Marker
-            key={`hub-${item.city}`}
-            position={[item.lat, item.lon]}
-            icon={createCustomMarkerIcon(item.city, '', 'city')}
-            eventHandlers={{
-              click: () => {
-                searchCity(item.city);
-              }
-            }}
-          >
-            <Popup>
-              <div className="p-2.5 max-w-xs">
-                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
-                  {item.city}
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
-                  {item.state}, India
-                </p>
-                <button
-                  type="button"
-                  onClick={() => searchCity(item.city)}
-                  className="w-full py-1 px-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors"
-                >
-                  <span>Load City Telemetry</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
 
         {/* User Saved Locations */}
         {savedLocations && savedLocations.map((item) => {

@@ -84,7 +84,7 @@ export const translations = {
     // Assistant
     chatHeader: 'WeatherGPT Assistant',
     chatSubheader: 'Ask anything about real-time weather, farming forecasts, or trip safety',
-    chatInputPlaceholder: 'Ask a weather question (e.g. Will it rain in Kanpur tomorrow?)...',
+    chatInputPlaceholder: 'Ask a weather question (e.g. Will it rain in your city tomorrow?)...',
     suggestedQuestions: 'Suggested Questions',
     send: 'Send',
     clearChat: 'Clear History',

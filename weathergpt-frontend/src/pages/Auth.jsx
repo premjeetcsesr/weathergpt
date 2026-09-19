@@ -32,7 +32,7 @@ export function Auth() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [defaultCity, setDefaultCity] = useState('Kanpur');
+  const [defaultCity, setDefaultCity] = useState('');
   const [unit, setUnit] = useState('celsius');
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -95,7 +95,7 @@ export function Auth() {
           unit,
           theme: 'dark',
           language: currentLanguage || 'en',
-          default_city: defaultCity.trim() || 'Kanpur',
+          default_city: defaultCity.trim(),
         },
       });
 
@@ -123,7 +123,7 @@ export function Auth() {
           unit: 'celsius',
           theme: 'dark',
           language: currentLanguage || 'en',
-          default_city: 'Kanpur',
+          default_city: '',
         },
       });
       if (regRes.success) {
@@ -315,7 +315,7 @@ export function Auth() {
                     type="text"
                     value={defaultCity}
                     onChange={(e) => setDefaultCity(e.target.value)}
-                    placeholder="Kanpur"
+                    placeholder="Your city or locality"
                     className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>

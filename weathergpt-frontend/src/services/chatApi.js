@@ -98,7 +98,7 @@ function generateMeteorologicalResponse(message, location, weatherData, language
 /**
  * Send a user query to WeatherGPT AI engine with automatic fallback
  */
-export async function sendChatMessage(message, location = "Kanpur", weatherData = null, options = {}) {
+export async function sendChatMessage(message, location = '', weatherData = null, options = {}) {
   const sessionId = getOrCreateSessionId();
 
   try {
@@ -146,25 +146,10 @@ export async function sendChatMessage(message, location = "Kanpur", weatherData 
 
     return { success: true, data: normalizedData };
   } catch (error) {
-    console.warn('Backend chat API unavailable, using local fallback:', error);
-
-    // Use fallback local inference engine
-    const fallbackResponse = generateMeteorologicalResponse(
-      message,
-      location,
-      weatherData,
-      options.language
-    );
-
+    console.error('Backend chat API unavailable:', error);
     return {
-      success: true,
-      data: {
-        id: `ai-fallback-${Date.now()}`,
-        sender: 'ai',
-        text: fallbackResponse.text,
-        followUps: fallbackResponse.followUps,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
+      success: false,
+      error: 'Live weather assistant is unavailable. Please try again.',
     };
   }
 }

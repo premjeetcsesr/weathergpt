@@ -365,7 +365,7 @@ export function Alerts() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Kanpur, Lucknow, Delhi"
+                  placeholder="e.g. your city or district"
                   value={subCity}
                   onChange={(e) => setSubCity(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
