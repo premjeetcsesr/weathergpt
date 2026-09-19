@@ -115,12 +115,6 @@ async def get_report_categories():
     status_code=status.HTTP_201_CREATED,
     summary="Submit Community Weather Report",
 )
-@router.post(
-    "/",
-    response_model=CommunityReportResponse,
-    status_code=status.HTTP_201_CREATED,
-    include_in_schema=False,
-)
 async def create_community_report(
     category: str = Form(..., description="Category id from /categories"),
     description: str = Form(..., min_length=5, max_length=1000, description="Incident details"),
@@ -275,11 +269,6 @@ async def create_community_report(
     "",
     response_model=CommunityReportListResponse,
     summary="List Community Weather Reports",
-)
-@router.get(
-    "/",
-    response_model=CommunityReportListResponse,
-    include_in_schema=False,
 )
 async def list_community_reports(
     category: Optional[str] = Query(None, description="Filter by category"),

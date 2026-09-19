@@ -109,7 +109,9 @@ app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    # The frontend uses bearer tokens rather than browser cookies. Starlette
+    # rejects wildcard origins during credentialed preflight requests.
+    allow_credentials="*" not in settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

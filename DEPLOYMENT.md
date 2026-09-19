@@ -39,6 +39,23 @@ For high-availability horizontal scaling:
 - **Backend**: Deploy on **Render**, **Railway**, or **AWS App Runner** using `weathergpt-backend/Dockerfile`.
 - **Database**: Managed **MongoDB Atlas** (M10+ cluster with IP access whitelist allowing backend VPC).
 
+### Vercel Frontend Setup
+
+1. Import the repository in Vercel and set **Root Directory** to `weathergpt-frontend`.
+2. Use the default Vite settings, or set them explicitly:
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm ci`
+3. Add these project environment variables for the Production environment:
+   - `VITE_API_BASE_URL`: backend REST base URL, including `/api/v1`
+   - `VITE_WS_BASE_URL`: backend WebSocket base URL; an `https://` value is upgraded to `wss://` by the frontend
+   - `VITE_USE_MOCK_DATA`: `false`
+   - `VITE_GOOGLE_MAPS_JAVASCRIPT_API_KEY`: optional browser-restricted key
+4. Redeploy after changing environment variables. Vite embeds `VITE_*` values at build time.
+
+`weathergpt-frontend/vercel.json` contains the SPA fallback so direct visits to routes such as
+`/dashboard`, `/alerts`, and `/settings` continue to work after deployment.
+
 ---
 
 ## 2. MongoDB Backup & Disaster Recovery Strategy

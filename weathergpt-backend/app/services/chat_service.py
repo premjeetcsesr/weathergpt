@@ -101,13 +101,10 @@ class ChatService:
         # 1. Parse linguistic properties & intent
         lang_detection = LanguageService.detect_language(raw_message, user_preference=request.language)
         detected_lang = lang_detection.get("language", "en")
-        if request.language in ("en", "hi"):
-            if detected_lang == "hi" and any(0x0900 <= ord(c) <= 0x097F for c in raw_message):
-                language = "hi"
-            else:
-                language = request.language
-        else:
-            language = detected_lang
+        # The question's language takes precedence over the UI preference.
+        # This keeps Devanagari and Hinglish questions in Hindi even when the
+        # app language selector is still set to English.
+        language = detected_lang if detected_lang in ("en", "hi") else (request.language or "en")
 
         intent = detect_intent(raw_message)
         time_target = extract_time_target(raw_message)
