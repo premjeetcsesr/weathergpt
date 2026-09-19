@@ -109,6 +109,7 @@ app.add_middleware(RateLimiterMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)*vercel\.app$",
     # The frontend uses bearer tokens rather than browser cookies. Starlette
     # rejects wildcard origins during credentialed preflight requests.
     allow_credentials="*" not in settings.CORS_ORIGINS,
