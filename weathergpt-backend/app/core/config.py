@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     WEATHER_API_KEY: str = ""
     WEATHER_API_BASE_URL: str = "https://api.openweathermap.org/data/2.5"
     GEOCODING_API_BASE_URL: str = "https://api.openweathermap.org/geo/1.0"
+    VISUAL_CROSSING_API_KEY: Optional[str] = None
+    VISUAL_CROSSING_API_BASE_URL: str = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline"
 
     # Official IMD Provider & Advanced Intelligence (Step 7)
     IMD_API_BASE_URL: Optional[str] = None

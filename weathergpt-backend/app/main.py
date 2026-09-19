@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 MongoAlertSubscriptionRepository,
                 MongoNotificationHistoryRepository,
             )
-            from app.providers.weather_provider import OpenWeatherMapProvider
+            from app.providers.provider_factory import ProviderFactory
             from app.services.alert_monitor import AlertMonitor
             from app.services.alert_service import AlertService
             from app.services.notification_service import NotificationService
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             alert_repo = MongoAlertRepository(db=db)
             sub_repo = MongoAlertSubscriptionRepository(db=db)
             notif_hist_repo = MongoNotificationHistoryRepository(db=db)
-            provider = OpenWeatherMapProvider(settings=settings)
+            provider = ProviderFactory.create_provider(settings=settings)
             alert_service = AlertService(provider=provider, alert_repo=alert_repo, settings=settings)
             ws_mgr = get_websocket_manager()
             notif_service = NotificationService(ws_manager=ws_mgr, history_repo=notif_hist_repo)

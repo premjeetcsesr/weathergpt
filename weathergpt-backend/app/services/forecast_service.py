@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from app.core.config import Settings, get_settings
 from app.providers.base import BaseWeatherProvider
 from app.providers.weather_provider import OpenWeatherMapProvider
+from app.providers.visual_crossing_provider import VisualCrossingProvider
 from app.schemas.forecast import DailyForecastItem, ForecastResponse, HourlyForecastItem
 from app.utils.units import map_owm_icon, ms_to_kmh
 
@@ -17,7 +18,11 @@ class ForecastService:
         settings: Optional[Settings] = None,
     ):
         self.settings = settings or get_settings()
-        self.provider = provider or OpenWeatherMapProvider(settings=self.settings)
+        self.provider = provider or (
+            VisualCrossingProvider(settings=self.settings)
+            if self.settings.DEFAULT_WEATHER_PROVIDER.lower() == "visualcrossing"
+            else OpenWeatherMapProvider(settings=self.settings)
+        )
 
     def normalize_forecast_data(self, raw_data: Dict, requested_city: str) -> ForecastResponse:
         """Process 5-day/3-hour forecast into hourly timeline and daily outlooks."""
@@ -108,7 +113,7 @@ class ForecastService:
             hourly=hourly_items,
             daily=daily_items,
             units="metric",
-            source="openweathermap",
+            source=self.provider.provider_name,
         )
 
     async def get_forecast(

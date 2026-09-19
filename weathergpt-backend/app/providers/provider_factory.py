@@ -11,6 +11,7 @@ from app.providers.base import WeatherProvider
 from app.providers.imd_provider import IMDProvider
 from app.providers.nwp_provider import DefaultNWPProvider, NWPProvider
 from app.providers.openweather_provider import OpenWeatherProvider
+from app.providers.visual_crossing_provider import VisualCrossingProvider
 from app.providers.radar_provider import DefaultRadarProvider, RadarProvider
 from app.providers.satellite_provider import DefaultSatelliteProvider, SatelliteProvider
 
@@ -128,8 +129,11 @@ class ProviderFactory:
         selected = (provider_name or cfg.DEFAULT_WEATHER_PROVIDER or "openweather").lower().strip()
 
         openweather = OpenWeatherProvider(settings=cfg)
+        visual_crossing = VisualCrossingProvider(settings=cfg)
         imd = IMDProvider(settings=cfg)
 
+        if selected in {"visualcrossing", "visual_crossing"}:
+            return visual_crossing
         if selected == "imd":
             if imd.is_configured:
                 # Wrap with fallback if IMD is live
@@ -158,6 +162,7 @@ class ProviderFactory:
         cfg = settings or get_settings()
         imd = IMDProvider(settings=cfg)
         openweather = OpenWeatherProvider(settings=cfg)
+        visual_crossing = VisualCrossingProvider(settings=cfg)
         nwp = DefaultNWPProvider(settings=cfg)
         radar = DefaultRadarProvider(settings=cfg)
         satellite = DefaultSatelliteProvider(settings=cfg)
@@ -165,6 +170,17 @@ class ProviderFactory:
         now = datetime.now(timezone.utc).isoformat()
 
         return [
+            {
+                "provider_id": "visualcrossing",
+                "name": "Visual Crossing",
+                "type": "weather",
+                "category": "Global Timeline Weather API",
+                "status": "ACTIVE" if visual_crossing.is_configured else "NOT_CONFIGURED",
+                "configured": visual_crossing.is_configured,
+                "is_primary": cfg.DEFAULT_WEATHER_PROVIDER.lower() in {"visualcrossing", "visual_crossing"},
+                "notes": "Global current conditions and forecast telemetry.",
+                "last_checked": now,
+            },
             {
                 "provider_id": "openweather",
                 "name": "OpenWeatherMap",

@@ -4,6 +4,7 @@ from app.core.config import Settings, get_settings
 from app.core.logging import logger
 from app.providers.base import BaseWeatherProvider
 from app.providers.weather_provider import OpenWeatherMapProvider
+from app.providers.visual_crossing_provider import VisualCrossingProvider
 from app.schemas.weather import (
     AirQualitySchema,
     CurrentWeatherSchema,
@@ -28,7 +29,11 @@ class WeatherService:
         settings: Optional[Settings] = None,
     ):
         self.settings = settings or get_settings()
-        self.provider = provider or OpenWeatherMapProvider(settings=self.settings)
+        self.provider = provider or (
+            VisualCrossingProvider(settings=self.settings)
+            if self.settings.DEFAULT_WEATHER_PROVIDER.lower() == "visualcrossing"
+            else OpenWeatherMapProvider(settings=self.settings)
+        )
         self._cache: Dict[str, Tuple[float, WeatherResponse]] = {}
         self.ttl = self.settings.CACHE_TTL_SECONDS
 
@@ -162,7 +167,7 @@ class WeatherService:
             location=location,
             current=current,
             units="metric",
-            source="openweathermap",
+            source=self.provider.provider_name,
         )
 
     async def get_current_weather(
