@@ -295,6 +295,15 @@ export async function getCurrentWeather(location = defaultCity) {
     });
     if (response.ok) {
       const data = await response.json();
+      // Keep the UI model stable while consuming the backend's canonical
+      // `temperature` field.
+      if (data?.current) {
+        data.current = {
+          ...data.current,
+          temp: data.current.temp ?? data.current.temperature,
+          icon: data.current.icon || mapOWMIcon(data.current.condition_code, data.current.condition),
+        };
+      }
       return { success: true, data };
     }
     const errData = await response.json().catch(() => ({}));

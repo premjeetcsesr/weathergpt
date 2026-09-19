@@ -215,8 +215,8 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
   return (
     <div className="relative w-full rounded-3xl overflow-hidden shadow-card border border-slate-200/80 dark:border-slate-800 bg-slate-900" style={{ height }}>
       {/* Top Floating Controls */}
-      <div className="absolute top-4 left-4 right-4 z-[400] flex flex-wrap items-center justify-between gap-3 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-2">
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-[400] flex flex-col gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
           <WeatherLayers
             activeLayer={activeLayer}
             setActiveLayer={setActiveLayer}
@@ -226,16 +226,17 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
           <button
             type="button"
             onClick={() => setShowCommunityReports(!showCommunityReports)}
-            className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all shadow-elevated flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold transition-all shadow-elevated flex items-center gap-1 shrink-0 ${
               showCommunityReports
                 ? 'bg-emerald-500 text-white shadow-emerald-500/20'
                 : 'bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
             }`}
             title="Toggle Community Incident Reports"
           >
-            <span>📸 Incident Reports</span>
+            <span>📸</span>
+            <span className="hidden xs:inline">Reports</span>
             {communityReports.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/20 text-white font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 text-white font-mono">
                 {communityReports.length}
               </span>
             )}
@@ -244,10 +245,11 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
           <button
             type="button"
             onClick={() => setIsReportModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 bg-gradient-to-r from-red-500 via-amber-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white"
+            className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1 bg-gradient-to-r from-red-500 via-amber-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shrink-0"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>{t('reportIncidentBtn') || 'Report Hazard (Current Location)'}</span>
+            <span className="hidden xs:inline">{t('reportIncidentBtn') || 'Report Hazard'}</span>
+            <span className="xs:hidden">Report</span>
           </button>
         </div>
 

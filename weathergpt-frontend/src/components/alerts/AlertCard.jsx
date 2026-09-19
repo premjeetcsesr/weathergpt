@@ -62,36 +62,36 @@ export function AlertCard({ alert }) {
   };
 
   return (
-    <div className={`rounded-3xl p-6 border shadow-card transition-all ${severityColors}`}>
+    <div className={`rounded-3xl p-4 sm:p-6 border shadow-card transition-all ${severityColors}`}>
       {/* Demo Warning Banner if Applicable (Section 15 Rule) */}
       {isDemo && (
-        <div className="mb-4 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs font-black tracking-wider uppercase flex items-center gap-2">
+        <div className="mb-3 sm:mb-4 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs font-black tracking-wider uppercase flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 animate-bounce" />
           <span>DEMO ALERT — NOT A REAL WARNING</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3 sm:mb-4">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
             <SeverityBadge severity={alert.severity || 'Moderate'} />
             {alert.category && <CategoryBadge category={alert.category} />}
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono capitalize">
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-mono capitalize">
               {alert.urgency || 'Expected'} Urgency
             </span>
           </div>
-          <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+          <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mt-1">
             {eventTitle}
           </h3>
           <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 mt-1">
-            <MapPin className="w-3.5 h-3.5 text-brand-500" />
+            <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
             <span className="font-bold text-slate-800 dark:text-slate-200">{locationName}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
           <button
             type="button"
             onClick={handleShare}
@@ -103,9 +103,9 @@ export function AlertCard({ alert }) {
           <button
             type="button"
             onClick={handleViewCity}
-            className="px-3 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3 py-1.5 sm:py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
           >
-            <span>View Forecast</span>
+            <span>Forecast</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
         </div>

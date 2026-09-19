@@ -2,7 +2,14 @@
  * Central API Configuration for WeatherGPT.
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const DEPLOYED_BACKEND_URL = 'https://weathergpt-backend-pb1q.onrender.com';
+
+function withApiPrefix(value) {
+  const url = (value || DEPLOYED_BACKEND_URL).trim().replace(/\/+$/, '');
+  return url.endsWith('/api/v1') ? url : `${url}/api/v1`;
+}
+
+export const API_BASE_URL = withApiPrefix(import.meta.env.VITE_API_BASE_URL);
 
 export const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
@@ -21,19 +28,13 @@ export const MAP_TILE_BASE_URL = `${API_BASE_URL}/weather/tiles`;
 // Environment-aware WebSocket URL (auto-upgrades to wss:// over HTTPS)
 function getWebSocketUrl() {
   if (import.meta.env.VITE_WS_BASE_URL) {
-    const configuredUrl = import.meta.env.VITE_WS_BASE_URL;
+    const configuredUrl = withApiPrefix(import.meta.env.VITE_WS_BASE_URL);
     if (configuredUrl.startsWith('http://') || configuredUrl.startsWith('https://')) {
       return configuredUrl.replace(/^http/, 'ws');
     }
     return configuredUrl;
   }
-  if (typeof window !== 'undefined') {
-    const isHttps = window.location.protocol === 'https:';
-    const wsProto = isHttps ? 'wss:' : 'ws:';
-    const host = window.location.port === '5173' ? `${window.location.hostname}:8000` : window.location.host;
-    return `${wsProto}//${host}/api/v1`;
-  }
-  return 'ws://localhost:8000/api/v1';
+  return `${DEPLOYED_BACKEND_URL.replace(/^http/, 'ws')}/api/v1`;
 }
 
 export const WS_BASE_URL = getWebSocketUrl();

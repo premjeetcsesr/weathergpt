@@ -17,6 +17,7 @@ import { Alerts } from './pages/Alerts';
 import { Climate } from './pages/Climate';
 import { Settings } from './pages/Settings';
 import { CommunityReports } from './pages/CommunityReports';
+import { Auth } from './pages/Auth';
 
 import { AlertToast } from './components/alerts/AlertToast';
 import { useWeather } from './context/WeatherContext';
@@ -41,7 +42,7 @@ function AppContent() {
         <Sidebar />
 
         {/* Main Scrollable Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden mb-16 md:mb-0">
+        <main className="flex-1 min-w-0 overflow-x-hidden px-2.5 py-3 sm:px-6 sm:py-6 lg:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
           <Routes>
             <Route path="/" element={<Assistant />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -52,6 +53,9 @@ function AppContent() {
             <Route path="/climate" element={<Climate />} />
             <Route path="/climate-analytics" element={<Climate />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/login" element={<Auth />} />
+            <Route path="/signup" element={<Auth />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -80,5 +84,4 @@ export function App() {
 }
 
 export default App;
-
 

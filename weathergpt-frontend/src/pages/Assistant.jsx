@@ -47,7 +47,6 @@ export function Assistant() {
   useEffect(() => {
     if (locationState.state?.prompt) {
       handleSendMessage(locationState.state.prompt);
-      // Clear history state to avoid re-trigger
       window.history.replaceState({}, document.title);
     }
   }, [locationState.state]);
@@ -161,58 +160,55 @@ export function Assistant() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-7.5rem)] flex flex-col justify-between pb-2">
+    <div className="max-w-4xl mx-auto h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-7.5rem)] flex flex-col justify-between pb-1 sm:pb-2">
       {/* Messages Stream or Gemini Hero Greeting */}
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col justify-center px-2 sm:px-4 py-4 overflow-y-auto animate-in fade-in duration-300">
+        <div className="flex-1 flex flex-col justify-center px-1 sm:px-4 py-2 sm:py-4 overflow-y-auto animate-in fade-in duration-300">
           
           {/* Top Gemini Sparkle Badge */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-pink-500 p-[1.5px] shadow-glow">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-pink-500 p-[1.5px] shadow-glow">
               <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[14.5px] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-indigo-500 dark:text-sky-400 animate-pulse" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 dark:text-sky-400 animate-pulse" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold tracking-widest uppercase bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 dark:from-brand-400 dark:via-indigo-300 dark:to-purple-300 bg-clip-text text-transparent">
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-widest uppercase bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 dark:from-brand-400 dark:via-indigo-300 dark:to-purple-300 bg-clip-text text-transparent">
                   WeatherGPT AI
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-extrabold uppercase bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
                   Meteorological Copilot
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Atmospheric Intelligence • Real-Time AI Simulation</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400">Atmospheric Intelligence • Real-Time AI</p>
             </div>
           </div>
 
-          {/* Gemini Large Typography Headline */}
-          <div className="mb-4">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tight leading-tight">
+          {/* Gemini Typography Headline */}
+          <div className="mb-3 sm:mb-4">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-500 dark:from-sky-300 dark:via-indigo-300 dark:to-pink-300 bg-clip-text text-transparent">
                 {user ? `Hello, ${user.full_name || user.username}` : currentLanguage === 'hi' ? 'नमस्ते!' : 'Hello, Explorer'}
               </span>
             </h1>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-slate-400 dark:text-slate-400 mt-1.5 tracking-tight">
+            <h2 className="text-lg sm:text-2xl lg:text-3xl font-medium text-slate-400 dark:text-slate-400 mt-1 tracking-tight">
               {currentLanguage === 'hi'
                 ? 'आज मौसम के बारे में आप क्या जानना चाहते हैं?'
                 : 'How can I help with the weather today?'}
             </h2>
           </div>
 
-          {/* Active Context Bar with Quick Switch to Dashboard */}
-          <div className="flex flex-wrap items-center gap-2 mb-6 text-xs">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-xs">
-              <MapPin className="w-3.5 h-3.5 text-brand-500" />
+          {/* Active Context Bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 text-xs">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-xs">
+              <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
               <span>Location: <strong>{selectedCity}</strong></span>
               {weatherData?.current && (
                 <>
                   <span className="text-slate-300 dark:text-slate-700">•</span>
                   <span className="text-brand-600 dark:text-brand-400 font-bold">
                     {Math.round(weatherData.current.temp)}°C
-                  </span>
-                  <span className="text-slate-500 dark:text-slate-400 capitalize hidden sm:inline">
-                    ({weatherData.current.weather[0]?.description})
                   </span>
                 </>
               )}
@@ -223,12 +219,12 @@ export function Assistant() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors font-semibold"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Open Telemetry Dashboard →</span>
+              <span>Telemetry Dashboard →</span>
             </Link>
           </div>
 
-          {/* 4 Gemini-style Prompt Suggestion Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+          {/* Prompt Suggestion Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-2">
             {geminiCards.map((card, idx) => {
               const Icon = card.icon;
               return (
@@ -237,22 +233,22 @@ export function Assistant() {
                   type="button"
                   onClick={() => handleSendMessage(card.prompt)}
                   disabled={isThinking}
-                  className="p-4 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 hover:border-brand-400 dark:hover:border-brand-500 hover:shadow-elevated transition-all text-left cursor-pointer group flex flex-col justify-between gap-3 relative overflow-hidden"
+                  className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 hover:border-brand-400 dark:hover:border-brand-500 hover:shadow-elevated transition-all text-left cursor-pointer group flex flex-col justify-between gap-2 sm:gap-3 relative overflow-hidden"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className={`p-2.5 rounded-2xl border ${card.iconBg} ${card.iconColor} shadow-xs`}>
-                      <Icon className="w-5 h-5" />
+                    <div className={`p-2 rounded-xl sm:rounded-2xl border ${card.iconBg} ${card.iconColor} shadow-xs`}>
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-950/60 transition-colors">
+                    <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-50 dark:group-hover:bg-brand-950/60 transition-colors">
                       <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                       {card.title}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 leading-relaxed line-clamp-2">
                       {card.desc}
                     </p>
                   </div>
@@ -264,7 +260,7 @@ export function Assistant() {
         </div>
       ) : (
         /* Conversation Mode */
-        <div className="flex-1 min-h-0 mb-3">
+        <div className="flex-1 min-h-0 mb-2 sm:mb-3">
           <ChatWindow
             messages={messages}
             isThinking={isThinking}

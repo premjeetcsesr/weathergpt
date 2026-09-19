@@ -44,7 +44,7 @@ export function WeatherProvider({ children }) {
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       const saved = localStorage.getItem('weathergpt_recent_searches');
-      return saved ? JSON.parse(saved) : ['Kanpur', 'New Delhi', 'Mumbai', 'Bengaluru'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return ['Kanpur', 'New Delhi', 'Mumbai', 'Bengaluru'];
     }
