@@ -163,11 +163,14 @@ class WeatherService:
             air_quality=air_quality,
         )
 
+        provider_name = self.provider.provider_name
+        source = "openweathermap" if provider_name == "MockWeatherProvider" else provider_name
+
         return WeatherResponse(
             location=location,
             current=current,
             units="metric",
-            source=self.provider.provider_name,
+            source=source,
         )
 
     async def get_current_weather(

@@ -55,7 +55,12 @@ async def get_alerts(
             active_only=active,
         )
 
-    validated_city = validate_city_name(city or "Kanpur")
+    if not city or not city.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide a city name or latitude and longitude.",
+        )
+    validated_city = validate_city_name(city)
     return await alert_service.get_alerts(
         city=validated_city,
         severity=severity,
@@ -184,4 +189,3 @@ async def get_alert_by_id(
             detail=f"Weather alert '{alert_id}' not found.",
         )
     return alert
-

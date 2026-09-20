@@ -393,7 +393,7 @@ export async function searchLocations(query) {
   const q = query.trim();
 
   try {
-    const url = `${ENDPOINTS.LOCATIONS_SEARCH}?query=${encodeURIComponent(q)}`;
+    const url = `${ENDPOINTS.LOCATIONS_SEARCH}?q=${encodeURIComponent(q)}`;
     const response = await fetch(url, { headers: getAuthHeaders() });
     if (response.ok) {
       const results = await response.json();

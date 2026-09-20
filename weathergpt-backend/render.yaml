@@ -23,7 +23,7 @@ services:
       - key: VISUAL_CROSSING_API_KEY
         sync: false
       - key: DEFAULT_WEATHER_PROVIDER
-        value: visualcrossing
+        value: openweather
       - key: LLM_API_KEY
         sync: false
       - key: JWT_SECRET_KEY

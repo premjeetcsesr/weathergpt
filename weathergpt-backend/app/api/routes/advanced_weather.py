@@ -61,7 +61,7 @@ async def get_advanced_weather(
     advisory_service: AdvisoryService = Depends(get_advisory_service),
     loc_service: LocationIntelligenceService = Depends(get_location_intelligence_service),
 ) -> AdvancedWeatherResponse:
-    loc_info = await loc_service.resolve_location(query=city or "Kanpur", explicit_city=city, lat=lat, lon=lon)
+    loc_info = await loc_service.resolve_location(query=city or "", explicit_city=city, lat=lat, lon=lon)
     res_city = loc_info["name"]
     res_lat = loc_info.get("latitude")
     res_lon = loc_info.get("longitude")
@@ -118,7 +118,7 @@ async def get_nowcast(
     nowcast_service: NowcastService = Depends(get_nowcast_service),
     loc_service: LocationIntelligenceService = Depends(get_location_intelligence_service),
 ) -> NowcastResponse:
-    loc_info = await loc_service.resolve_location(query=city or "Kanpur", explicit_city=city, lat=lat, lon=lon)
+    loc_info = await loc_service.resolve_location(query=city or "", explicit_city=city, lat=lat, lon=lon)
     return await nowcast_service.get_nowcast(
         city=loc_info["name"],
         lat=loc_info.get("latitude"),
@@ -139,7 +139,7 @@ async def get_official_warnings(
     warning_service: WarningService = Depends(get_warning_service),
     loc_service: LocationIntelligenceService = Depends(get_location_intelligence_service),
 ) -> WarningsResponse:
-    loc_info = await loc_service.resolve_location(query=city or "Kanpur", explicit_city=city, lat=lat, lon=lon)
+    loc_info = await loc_service.resolve_location(query=city or "", explicit_city=city, lat=lat, lon=lon)
     return await warning_service.get_official_warnings(
         city=loc_info["name"],
         lat=loc_info.get("latitude"),
@@ -160,7 +160,7 @@ async def get_severe_weather(
     severe_service: SevereWeatherService = Depends(get_severe_weather_service),
     loc_service: LocationIntelligenceService = Depends(get_location_intelligence_service),
 ) -> SevereWeatherResponse:
-    loc_info = await loc_service.resolve_location(query=city or "Kanpur", explicit_city=city, lat=lat, lon=lon)
+    loc_info = await loc_service.resolve_location(query=city or "", explicit_city=city, lat=lat, lon=lon)
     return await severe_service.get_severe_weather_report(
         city=loc_info["name"],
         lat=loc_info.get("latitude"),
@@ -181,7 +181,7 @@ async def get_weather_advisory(
     advisory_service: AdvisoryService = Depends(get_advisory_service),
     loc_service: LocationIntelligenceService = Depends(get_location_intelligence_service),
 ) -> AdvisoryResponse:
-    loc_info = await loc_service.resolve_location(query=city or "Kanpur", explicit_city=city, lat=lat, lon=lon)
+    loc_info = await loc_service.resolve_location(query=city or "", explicit_city=city, lat=lat, lon=lon)
     return await advisory_service.get_actionable_advisories(
         city=loc_info["name"],
         lat=loc_info.get("latitude"),
@@ -196,7 +196,7 @@ async def get_weather_advisory(
     description="Transparency and provenance details about the active weather provider, validity period, and data availability.",
 )
 async def get_weather_source(
-    city: Optional[str] = Query(default="Kanpur", description="City name"),
+    city: Optional[str] = Query(default=None, description="City name"),
     weather_service: WeatherService = Depends(get_weather_service),
 ) -> SourceTransparencyResponse:
     curr = await weather_service.get_current_weather(city=city)
@@ -246,4 +246,3 @@ async def run_admin_diagnostics(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "diagnostics": providers_list,
     }
-

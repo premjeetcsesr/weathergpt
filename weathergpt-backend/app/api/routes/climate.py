@@ -25,7 +25,7 @@ router = APIRouter(prefix="/climate", tags=["Climate Analytics"])
     description="Retrieve aggregated historical climate metrics (avg/min/max temperature, total rainfall, rainy days, humidity, extreme events).",
 )
 async def get_climate_summary(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window (last_7_days, last_30_days, last_3_months, last_6_months, last_1_year, custom)"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD) for custom range"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD) for custom range"),
@@ -51,7 +51,7 @@ async def get_climate_summary(
     description="Fetch daily temperature readings (avg/min/max) and linear regression trend slope for the selected period.",
 )
 async def get_temperature_trend(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
@@ -73,7 +73,7 @@ async def get_temperature_trend(
     description="Fetch daily and cumulative rainfall telemetry with rainy day counts and trend indicators.",
 )
 async def get_rainfall_trend(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
@@ -95,7 +95,7 @@ async def get_rainfall_trend(
     description="Fetch relative humidity readings and variation trends for the selected period.",
 )
 async def get_humidity_trend(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
@@ -117,7 +117,7 @@ async def get_humidity_trend(
     description="Detect meteorological anomalies based on historical baseline Z-scores (|z|<1 Normal, 1<=|z|<2 Moderate, |z|>=2 Significant).",
 )
 async def get_climate_anomalies(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
@@ -139,7 +139,7 @@ async def get_climate_anomalies(
     description="Compare current time window with previous equivalent historical period (e.g. current 30 days vs previous 30 days).",
 )
 async def get_climate_comparison(
-    city: str = Query(default="Kanpur", description="Target city name"),
+    city: str = Query(..., description="Target city name"),
     range_key: Optional[str] = Query(default="last_30_days", description="Time window"),
     start_date: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),

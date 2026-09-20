@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, time as datetime_time
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -60,7 +60,13 @@ class VisualCrossingProvider(BaseWeatherProvider):
     def _epoch(value: Optional[str]) -> int:
         if not value:
             return 0
-        return int(datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp())
+        normalized = value.replace("Z", "+00:00")
+        try:
+            return int(datetime.fromisoformat(normalized).timestamp())
+        except ValueError:
+            parsed_time = datetime_time.fromisoformat(value[:8])
+            today = datetime.now().date()
+            return int(datetime.combine(today, parsed_time).timestamp())
 
     @staticmethod
     def _condition_icon(condition: str) -> str:

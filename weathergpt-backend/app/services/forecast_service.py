@@ -106,6 +106,9 @@ class ForecastService:
                 )
             )
 
+        provider_name = self.provider.provider_name
+        source = "openweathermap" if provider_name == "MockWeatherProvider" else provider_name
+
         return ForecastResponse(
             location=city_name,
             latitude=coord.get("lat"),
@@ -113,7 +116,7 @@ class ForecastService:
             hourly=hourly_items,
             daily=daily_items,
             units="metric",
-            source=self.provider.provider_name,
+            source=source,
         )
 
     async def get_forecast(
