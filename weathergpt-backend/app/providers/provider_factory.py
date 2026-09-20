@@ -44,6 +44,7 @@ class FallbackWeatherProvider(WeatherProvider):
         if hasattr(self.primary, "is_configured") and getattr(self.primary, "is_configured"):
             try:
                 res = await self.primary.get_current_weather(city=city, lat=lat, lon=lon)
+                res["_provider_source"] = self.primary.provider_name
                 return res
             except Exception as exc:
                 logger.warning(
@@ -52,7 +53,9 @@ class FallbackWeatherProvider(WeatherProvider):
                 )
 
         # Use fallback provider
-        return await self.fallback.get_current_weather(city=city, lat=lat, lon=lon)
+        res = await self.fallback.get_current_weather(city=city, lat=lat, lon=lon)
+        res["_provider_source"] = self.fallback.provider_name
+        return res
 
     async def get_forecast(
         self,
@@ -62,11 +65,15 @@ class FallbackWeatherProvider(WeatherProvider):
     ) -> Dict[str, Any]:
         if hasattr(self.primary, "is_configured") and getattr(self.primary, "is_configured"):
             try:
-                return await self.primary.get_forecast(city=city, lat=lat, lon=lon)
+                res = await self.primary.get_forecast(city=city, lat=lat, lon=lon)
+                res["_provider_source"] = self.primary.provider_name
+                return res
             except Exception as exc:
                 logger.warning(f"Primary forecast provider failed: {exc}. Using fallback.")
 
-        return await self.fallback.get_forecast(city=city, lat=lat, lon=lon)
+        res = await self.fallback.get_forecast(city=city, lat=lat, lon=lon)
+        res["_provider_source"] = self.fallback.provider_name
+        return res
 
     async def get_alerts(
         self,
@@ -133,7 +140,7 @@ class ProviderFactory:
         imd = IMDProvider(settings=cfg)
 
         if selected in {"visualcrossing", "visual_crossing"}:
-            return visual_crossing
+            return FallbackWeatherProvider(primary=visual_crossing, fallback=openweather)
         if selected == "imd":
             if imd.is_configured:
                 # Wrap with fallback if IMD is live

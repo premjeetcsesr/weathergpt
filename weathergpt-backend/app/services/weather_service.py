@@ -163,7 +163,7 @@ class WeatherService:
             air_quality=air_quality,
         )
 
-        provider_name = self.provider.provider_name
+        provider_name = raw_data.get("_provider_source", self.provider.provider_name)
         source = "openweathermap" if provider_name == "MockWeatherProvider" else provider_name
 
         return WeatherResponse(
