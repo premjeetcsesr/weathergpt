@@ -13,9 +13,14 @@ import { useAlertWebSocket } from '../services/useAlertWebSocket';
 
 const WeatherContext = createContext();
 
+function getStoredCity() {
+  const stored = localStorage.getItem('weathergpt_city_v2')?.trim() || '';
+  return /^-?\d+(?:\.\d+)?$/.test(stored) ? '' : stored;
+}
+
 export function WeatherProvider({ children }) {
   const [selectedCity, setSelectedCity] = useState(() => {
-    return localStorage.getItem('weathergpt_city_v2') || defaultCity;
+    return getStoredCity() || defaultCity;
   });
 
   const [weatherData, setWeatherData] = useState(null);
@@ -185,7 +190,11 @@ export function WeatherProvider({ children }) {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
           const detectedCity = await getCityByCoordinates(lat, lon);
-          searchCity(detectedCity);
+          if (detectedCity) {
+            searchCity(detectedCity);
+          } else {
+            setError('Could not resolve your location to a city. Search for a city instead.');
+          }
         } catch (err) {
           console.error('Geolocation reverse lookup error:', err);
         } finally {

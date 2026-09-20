@@ -95,6 +95,7 @@ export const ENDPOINTS = {
   COMMUNITY_REPORTS_CATEGORIES: `${API_BASE_URL}/community-reports/categories`,
   COMMUNITY_REPORTS_NEARBY: `${API_BASE_URL}/community-reports/nearby`,
   COMMUNITY_REPORTS_MY: `${API_BASE_URL}/community-reports/my-reports`,
+  PLACES_NEARBY: `${API_BASE_URL}/places/nearby`,
 };
 
 export const REQUEST_TIMEOUT = 10000; // 10 seconds

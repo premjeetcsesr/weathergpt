@@ -14,6 +14,13 @@ def validate_city_name(city: Optional[str]) -> str:
             details={"parameter": "city"},
         )
     cleaned = city.strip()
+    if re.fullmatch(r"-?\d+(?:\.\d+)?", cleaned):
+        raise AppException(
+            message="Provide a city name or latitude and longitude coordinates.",
+            code="INVALID_QUERY_PARAMETER",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details={"parameter": "city", "value": cleaned},
+        )
     if len(cleaned) < 1 or len(cleaned) > 100:
         raise AppException(
             message="City name must be between 1 and 100 characters.",

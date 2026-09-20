@@ -434,7 +434,7 @@ export async function getCityByCoordinates(lat, lon) {
     console.warn('Backend reverse coordinate lookup error:', e);
   }
 
-  return defaultCity;
+  return null;
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   Camera
 } from 'lucide-react';
 import { ReportModal } from '../community/ReportModal';
+import { fetchNearbyPlaces } from '../../services/nearbyPlacesApi';
 import {
   fetchRadarStatus,
   fetchRadarLayer,
@@ -98,6 +99,9 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
   const [satelliteOpacity, setSatelliteOpacity] = useState(0.75);
 
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [nearbyCategory, setNearbyCategory] = useState(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
 
   // Community Reports Layer State & Real-time Alert
   const [communityReports, setCommunityReports] = useState([]);
@@ -198,6 +202,24 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
     ? [weatherData.location.lat, weatherData.location.lon]
     : defaultCenter;
 
+  useEffect(() => {
+    if (!nearbyCategory || !weatherData?.location?.lat || !weatherData?.location?.lon) return;
+    let active = true;
+    setIsLoadingNearby(true);
+    fetchNearbyPlaces({
+      lat: weatherData.location.lat,
+      lon: weatherData.location.lon,
+      category: nearbyCategory,
+    }).then((items) => {
+      if (active) setNearbyPlaces(items);
+    }).catch(() => {
+      if (active) setNearbyPlaces([]);
+    }).finally(() => {
+      if (active) setIsLoadingNearby(false);
+    });
+    return () => { active = false; };
+  }, [nearbyCategory, weatherData?.location?.lat, weatherData?.location?.lon]);
+
   const isDark = theme === 'dark';
 
   return (
@@ -211,6 +233,18 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
             radarStatus={radarStatus}
             satelliteStatus={satelliteStatus}
           />
+          {['hospital', 'pharmacy', 'emergency_room'].map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setNearbyCategory((current) => current === category ? null : category)}
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl text-[11px] sm:text-xs font-bold shadow-elevated shrink-0 ${
+                nearbyCategory === category ? 'bg-rose-500 text-white' : 'bg-white/95 dark:bg-slate-900/95 text-slate-700 dark:text-slate-200'
+              }`}
+            >
+              {category === 'hospital' ? 'Hospitals' : category === 'pharmacy' ? 'Pharmacies' : 'Emergency'}
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => setShowCommunityReports(!showCommunityReports)}
@@ -603,6 +637,19 @@ export function WeatherMap({ height = "550px", focusCoords = null, focusReportId
             }}
           />
         )}
+
+        {nearbyPlaces.map((place) => (
+          <Marker key={place.id} position={[place.latitude, place.longitude]}>
+            <Popup>
+              <div className="p-2 max-w-xs">
+                <h4 className="font-bold text-xs text-slate-900">{place.name}</h4>
+                <p className="text-[11px] text-slate-600 mt-1">{place.address}</p>
+                {place.rating && <p className="text-[11px] text-amber-600 mt-1">★ {place.rating} ({place.user_ratings_total || 0})</p>}
+                {isLoadingNearby && <p className="text-[11px] text-slate-500 mt-1">Updating nearby places…</p>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* Active Real-time Alert Markers */}
         {(activeLayer === 'alerts' || activeLayer === 'precipitation') &&

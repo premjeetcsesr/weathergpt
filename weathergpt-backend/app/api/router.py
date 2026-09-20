@@ -13,6 +13,7 @@ from app.api.routes import (
     weather,
     websocket,
     community_reports,
+    nearby_places,
 )
 
 api_router = APIRouter()
@@ -30,7 +31,7 @@ api_router.include_router(chat.router)
 api_router.include_router(notifications.router)
 api_router.include_router(websocket.router)
 api_router.include_router(community_reports.router)
-
+api_router.include_router(nearby_places.router)
 
 
 
