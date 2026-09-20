@@ -8,6 +8,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { AuthModal } from './components/auth/AuthModal';
+import { LocationPermissionGate } from './components/location/LocationPermissionGate';
 
 // Pages
 import { Dashboard } from './pages/Dashboard';
@@ -23,7 +24,11 @@ import { AlertToast } from './components/alerts/AlertToast';
 import { useWeather } from './context/WeatherContext';
 
 function AppContent() {
-  const { latestToast, dismissToast } = useWeather();
+  const { latestToast, dismissToast, locationReady } = useWeather();
+
+  if (!locationReady) {
+    return <LocationPermissionGate />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
@@ -84,4 +89,3 @@ export function App() {
 }
 
 export default App;
-

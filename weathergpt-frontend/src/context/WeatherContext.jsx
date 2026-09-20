@@ -7,21 +7,15 @@ import {
   fetchSavedLocations,
   saveLocationToBackend,
   deleteSavedLocationFromBackend,
-  defaultCity,
 } from '../services/weatherApi';
 import { useAlertWebSocket } from '../services/useAlertWebSocket';
 
 const WeatherContext = createContext();
 
-function getStoredCity() {
-  const stored = localStorage.getItem('weathergpt_city_v2')?.trim() || '';
-  return /^-?\d+(?:\.\d+)?$/.test(stored) ? '' : stored;
-}
-
 export function WeatherProvider({ children }) {
-  const [selectedCity, setSelectedCity] = useState(() => {
-    return getStoredCity() || defaultCity;
-  });
+  const [selectedCity, setSelectedCity] = useState('');
+  const [locationReady, setLocationReady] = useState(false);
+  const [locationError, setLocationError] = useState(null);
 
   const [weatherData, setWeatherData] = useState(null);
   const [hourlyForecast, setHourlyForecast] = useState([]);
@@ -64,8 +58,9 @@ export function WeatherProvider({ children }) {
   };
 
   useEffect(() => {
+    if (!locationReady) return;
     loadSavedLocations();
-  }, []);
+  }, [locationReady]);
 
   const addSavedLocation = async (loc) => {
     const res = await saveLocationToBackend(loc);
@@ -179,11 +174,12 @@ export function WeatherProvider({ children }) {
   // Browser Geolocation
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
+      setLocationError('Geolocation is not supported by your browser.');
       return;
     }
 
     setIsLocating(true);
+    setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
@@ -192,11 +188,13 @@ export function WeatherProvider({ children }) {
           const detectedCity = await getCityByCoordinates(lat, lon);
           if (detectedCity) {
             searchCity(detectedCity);
+            setLocationReady(true);
           } else {
-            setError('Could not resolve your location to a city. Search for a city instead.');
+            setLocationError('Could not resolve your location to a city.');
           }
         } catch (err) {
           console.error('Geolocation reverse lookup error:', err);
+          setLocationError('Could not determine your location. Please try again.');
         } finally {
           setIsLocating(false);
         }
@@ -204,17 +202,15 @@ export function WeatherProvider({ children }) {
       (geoError) => {
         console.warn('Geolocation access denied or timed out:', geoError.message);
         setIsLocating(false);
-        alert('Could not determine your location. Search for a city instead.');
+        setLocationError(
+          geoError.code === 1
+            ? 'Location permission is required to use WeatherGPT.'
+            : 'Could not determine your location. Please try again.'
+        );
       },
       { timeout: 8000 }
     );
   };
-
-  useEffect(() => {
-    if (!selectedCity) {
-      useCurrentLocation();
-    }
-  }, [selectedCity]);
 
   // Temperature unit conversion helper
   const formatTemp = (tempInCelsius) => {
@@ -309,6 +305,8 @@ export function WeatherProvider({ children }) {
     <WeatherContext.Provider
       value={{
         selectedCity,
+        locationReady,
+        locationError,
         weatherData,
         hourlyForecast,
         dailyForecast,
