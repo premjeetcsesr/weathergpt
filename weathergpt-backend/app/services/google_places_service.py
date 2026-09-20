@@ -25,8 +25,9 @@ class GooglePlacesService:
         if not api_key:
             raise MissingAPIKeyError(provider="Google Places")
 
+        google_place_type = "shopping_mall" if place_type == "shop" else place_type
         payload = {
-            "includedTypes": [place_type],
+            "includedTypes": [google_place_type],
             "maxResultCount": 20,
             "locationRestriction": {
                 "circle": {

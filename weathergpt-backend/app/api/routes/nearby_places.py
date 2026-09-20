@@ -19,7 +19,7 @@ def get_google_places_service() -> GooglePlacesService:
 async def get_nearby_places(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
-    category: str = Query("hospital", pattern="^(hospital|pharmacy|emergency_room)$"),
+    category: str = Query("hospital", pattern="^(hospital|pharmacy|emergency_room|shop)$"),
     radius: int = Query(5000, ge=100, le=50000),
     places_service: GooglePlacesService = Depends(get_google_places_service),
 ) -> List[Dict[str, Any]]:
