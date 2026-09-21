@@ -64,25 +64,55 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
     }
 
     setIsDetectingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLatitude(position.coords.latitude);
-        setLongitude(position.coords.longitude);
-        setIsDetectingGps(false);
-        setGpsError(null);
-      },
-      (error) => {
-        setIsDetectingGps(false);
-        if (error.code === error.PERMISSION_DENIED) {
-          setGpsError('Location permission was denied. Please allow location access in your browser settings.');
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          setGpsError('Location information is currently unavailable. Please enter coordinates manually.');
-        } else {
-          setGpsError('Could not obtain GPS location. Please try again.');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+
+    const tryGetLocation = (useHighAccuracy) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLatitude(position.coords.latitude);
+          setLongitude(position.coords.longitude);
+          setIsDetectingGps(false);
+          setGpsError(null);
+        },
+        async (error) => {
+          if (useHighAccuracy && (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)) {
+            console.warn('High accuracy GPS failed. Retrying with standard accuracy...');
+            tryGetLocation(false);
+            return;
+          }
+
+          try {
+            const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+            if (ipRes.ok) {
+              const data = await ipRes.json();
+              if (data.latitude && data.longitude) {
+                setLatitude(parseFloat(data.latitude));
+                setLongitude(parseFloat(data.longitude));
+                if (data.city && !locationName) {
+                  setLocationName(data.city);
+                }
+                setIsDetectingGps(false);
+                setGpsError('Could not get exact GPS lock. Using approximate network location.');
+                return;
+              }
+            }
+          } catch (ipErr) {
+            console.warn('IP fallback failed:', ipErr);
+          }
+
+          setIsDetectingGps(false);
+          if (error.code === error.PERMISSION_DENIED) {
+            setGpsError('Location permission was denied. Please allow location access or enter coordinates manually.');
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setGpsError('Location information is currently unavailable. Please enter coordinates manually.');
+          } else {
+            setGpsError('Could not obtain GPS location. Please enter coordinates manually.');
+          }
+        },
+        { enableHighAccuracy: useHighAccuracy, timeout: useHighAccuracy ? 8000 : 15000, maximumAge: 0 }
+      );
+    };
+
+    tryGetLocation(true);
   };
 
   const stopCamera = () => {
@@ -327,18 +357,53 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
             </div>
 
             {latitude && longitude ? (
-              <div className="p-2.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 font-mono">
-                <span>
-                  📍 {latitude.toFixed(4)}, {longitude.toFixed(4)}
-                </span>
-                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full font-sans font-semibold">
-                  Coordinates Captured
+              <div className="p-2.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-800 dark:text-emerald-300 font-mono">
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <input 
+                    type="number"
+                    step="any"
+                    value={latitude}
+                    onChange={(e) => setLatitude(parseFloat(e.target.value) || '')}
+                    className="w-full sm:w-24 p-1 rounded-lg border border-emerald-300/50 bg-emerald-100/50 dark:bg-emerald-900/50 dark:border-emerald-700 focus:outline-none"
+                    placeholder="Lat"
+                  />
+                  <input 
+                    type="number"
+                    step="any"
+                    value={longitude}
+                    onChange={(e) => setLongitude(parseFloat(e.target.value) || '')}
+                    className="w-full sm:w-24 p-1 rounded-lg border border-emerald-300/50 bg-emerald-100/50 dark:bg-emerald-900/50 dark:border-emerald-700 focus:outline-none"
+                    placeholder="Lon"
+                  />
+                </div>
+                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full font-sans font-semibold shrink-0 self-start sm:self-auto">
+                  Coordinates Ready
                 </span>
               </div>
             ) : (
-              <div className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>No GPS location captured yet. Click &quot;Detect GPS&quot; above.</span>
+              <div className="flex flex-col gap-2">
+                <div className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>No GPS location captured yet. Click &quot;Detect GPS&quot; above, or enter manually below.</span>
+                </div>
+                <div className="flex gap-2">
+                  <input 
+                    type="number"
+                    step="any"
+                    value={latitude || ''}
+                    onChange={(e) => setLatitude(parseFloat(e.target.value) || null)}
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs text-slate-900 dark:text-slate-100"
+                    placeholder="Latitude (e.g. 28.6139)"
+                  />
+                  <input 
+                    type="number"
+                    step="any"
+                    value={longitude || ''}
+                    onChange={(e) => setLongitude(parseFloat(e.target.value) || null)}
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs text-slate-900 dark:text-slate-100"
+                    placeholder="Longitude (e.g. 77.2090)"
+                  />
+                </div>
               </div>
             )}
 
