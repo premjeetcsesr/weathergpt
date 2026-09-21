@@ -53,13 +53,19 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
+  const isDetectingRef = useRef(false);
+
   if (!isOpen) return null;
 
   // Handle GPS detection using browser geolocation
   const handleDetectGps = () => {
+    if (isDetectingRef.current) return;
+    isDetectingRef.current = true;
+
     setGpsError(null);
     if (!navigator.geolocation) {
       setGpsError('Geolocation is not supported by your browser or device.');
+      isDetectingRef.current = false;
       return;
     }
 
@@ -71,11 +77,12 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
           setLatitude(position.coords.latitude);
           setLongitude(position.coords.longitude);
           setIsDetectingGps(false);
+          isDetectingRef.current = false;
           setGpsError(null);
         },
         async (error) => {
           if (useHighAccuracy && (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)) {
-            console.warn('High accuracy GPS failed. Retrying with standard accuracy...');
+            // Intentionally silent: retrying with standard accuracy without alarming the user
             tryGetLocation(false);
             return;
           }
@@ -91,6 +98,7 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
                   setLocationName(data.city);
                 }
                 setIsDetectingGps(false);
+                isDetectingRef.current = false;
                 setGpsError('Could not get exact GPS lock. Using approximate network location.');
                 return;
               }
@@ -100,6 +108,7 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
           }
 
           setIsDetectingGps(false);
+          isDetectingRef.current = false;
           if (error.code === error.PERMISSION_DENIED) {
             setGpsError('Location permission was denied. Please allow location access or enter coordinates manually.');
           } else if (error.code === error.POSITION_UNAVAILABLE) {
