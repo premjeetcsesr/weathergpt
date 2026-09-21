@@ -117,7 +117,7 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
             setGpsError('Could not obtain GPS location. Please enter coordinates manually.');
           }
         },
-        { enableHighAccuracy: useHighAccuracy, timeout: useHighAccuracy ? 8000 : 15000, maximumAge: 0 }
+        { enableHighAccuracy: useHighAccuracy, timeout: useHighAccuracy ? 25000 : 15000, maximumAge: 0 }
       );
     };
 

@@ -229,7 +229,7 @@ export function WeatherProvider({ children }) {
             : 'Could not determine your location. Please try again or enter it manually.'
         );
       },
-      { timeout: 15000, enableHighAccuracy: true }
+      { timeout: 25000, enableHighAccuracy: true }
     );
   };
 
