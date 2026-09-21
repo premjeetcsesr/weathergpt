@@ -47,7 +47,7 @@ function AppContent() {
         <Sidebar />
 
         {/* Main Scrollable Content */}
-        <main className="flex-1 min-w-0 overflow-x-hidden px-2.5 py-3 sm:px-6 sm:py-6 lg:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
+        <main className="flex-1 min-w-0 overflow-x-hidden px-2.5 py-3 sm:px-6 sm:py-6 lg:p-8 xl:p-10 2xl:p-12 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8 transition-all duration-300">
           <Routes>
             <Route path="/" element={<Assistant />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -78,7 +78,7 @@ export function App() {
       <LanguageProvider>
         <AuthProvider>
           <WeatherProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AppContent />
             </Router>
           </WeatherProvider>

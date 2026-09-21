@@ -105,7 +105,7 @@ export function CurrentWeather() {
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl sm:text-6xl font-extrabold tracking-tighter text-slate-900 dark:text-white">
+              <span className="text-5xl sm:text-6xl md:text-7xl lg:text-7xl xl:text-8xl font-extrabold tracking-tighter text-slate-900 dark:text-white transition-all">
                 {formatTemp(current.temp)}
               </span>
             </div>
@@ -132,7 +132,7 @@ export function CurrentWeather() {
       </div>
 
       {/* Bottom Grid: Essential Telemetry Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 xl:gap-5 mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 relative z-10">
         
         {/* Humidity */}
         <div className="p-3 rounded-2xl bg-white/70 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 shadow-subtle">

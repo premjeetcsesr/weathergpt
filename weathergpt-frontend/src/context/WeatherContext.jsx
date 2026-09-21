@@ -13,8 +13,12 @@ import { useAlertWebSocket } from '../services/useAlertWebSocket';
 const WeatherContext = createContext();
 
 export function WeatherProvider({ children }) {
-  const [selectedCity, setSelectedCity] = useState('');
-  const [locationReady, setLocationReady] = useState(false);
+  const [selectedCity, setSelectedCity] = useState(() => {
+    return localStorage.getItem('weathergpt_city_v2') || '';
+  });
+  const [locationReady, setLocationReady] = useState(() => {
+    return !!localStorage.getItem('weathergpt_city_v2');
+  });
   const [locationError, setLocationError] = useState(null);
 
   const [weatherData, setWeatherData] = useState(null);
@@ -165,13 +169,14 @@ export function WeatherProvider({ children }) {
     if (!city || city.trim().length === 0) return;
     const formatted = city.trim();
     setSelectedCity(formatted);
+    setLocationReady(true);
     setRecentSearches((prev) => {
       const filtered = prev.filter((c) => c.toLowerCase() !== formatted.toLowerCase());
       return [formatted, ...filtered].slice(0, 6);
     });
   };
 
-  // Browser Geolocation
+  // Browser Geolocation with IP Fallback
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser.');
@@ -199,16 +204,32 @@ export function WeatherProvider({ children }) {
           setIsLocating(false);
         }
       },
-      (geoError) => {
-        console.warn('Geolocation access denied or timed out:', geoError.message);
+      async (geoError) => {
+        console.warn('Geolocation access denied or timed out:', geoError.message, 'Attempting IP fallback.');
+        try {
+          // IP-based Fallback
+          const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+          if (ipRes.ok) {
+            const data = await ipRes.json();
+            if (data.city) {
+              searchCity(data.city);
+              setLocationReady(true);
+              setIsLocating(false);
+              return;
+            }
+          }
+        } catch (ipErr) {
+          console.warn('IP fallback failed:', ipErr);
+        }
+
         setIsLocating(false);
         setLocationError(
           geoError.code === 1
-            ? 'Location permission is required to use WeatherGPT.'
-            : 'Could not determine your location. Please try again.'
+            ? 'Location permission denied. Please enter your city manually.'
+            : 'Could not determine your location. Please try again or enter it manually.'
         );
       },
-      { timeout: 8000 }
+      { timeout: 15000, enableHighAccuracy: true }
     );
   };
 

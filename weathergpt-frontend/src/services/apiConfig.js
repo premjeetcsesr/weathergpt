@@ -2,7 +2,9 @@
  * Central API Configuration for WeatherGPT.
  */
 
-const DEPLOYED_BACKEND_URL = 'https://weathergpt-backend-pb1q.onrender.com';
+const DEPLOYED_BACKEND_URL = import.meta.env.PROD 
+  ? 'https://weathergpt-backend-pb1q.onrender.com' 
+  : 'http://localhost:8000';
 
 function withApiPrefix(value) {
   const url = (value || DEPLOYED_BACKEND_URL).trim().replace(/\/+$/, '');

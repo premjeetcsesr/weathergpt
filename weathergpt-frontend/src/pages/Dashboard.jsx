@@ -41,7 +41,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-screen-2xl mx-auto pb-12 transition-all duration-300">
       {/* Official Warning Banner (Prominent on EXTREME / SEVERE warnings) */}
       {advancedData?.warnings && (
         <OfficialWarningBanner warningsData={advancedData.warnings} />
@@ -75,10 +75,10 @@ export function Dashboard() {
       />
 
       {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         
-        {/* Left / Main Column (8 cols on lg) */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* Left / Main Column */}
+        <div className="md:col-span-7 lg:col-span-8 xl:col-span-9 space-y-6">
           {/* Hero Current Weather */}
           <CurrentWeather />
 
@@ -100,8 +100,8 @@ export function Dashboard() {
           <SafetyModes weatherData={weatherData} advancedData={advancedData} />
         </div>
 
-        {/* Right Column (4 cols on lg) */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* Right Column */}
+        <div className="md:col-span-5 lg:col-span-4 xl:col-span-3 space-y-6">
           {/* Step 7: Actionable Safety Advisories */}
           {advancedData?.advisory && (
             <ActionableAdvisoryCard advisoryData={advancedData.advisory} />

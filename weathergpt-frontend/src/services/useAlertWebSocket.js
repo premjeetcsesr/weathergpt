@@ -159,7 +159,13 @@ export function useAlertWebSocket({ activeCity = '', onAlertReceived, onAlertExp
       clearInterval(pingIntervalRef.current);
       clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) {
-        wsRef.current.close();
+        const socket = wsRef.current;
+        if (socket.readyState === WebSocket.CONNECTING) {
+          socket.onopen = () => socket.close();
+          socket.onerror = null;
+        } else {
+          socket.close();
+        }
         wsRef.current = null;
       }
     };

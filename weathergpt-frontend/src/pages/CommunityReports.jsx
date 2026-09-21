@@ -158,7 +158,7 @@ export function CommunityReports() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fade-in">
+    <div className="space-y-6 max-w-screen-2xl mx-auto pb-12 animate-fade-in transition-all duration-300">
       {/* Top Header & CTA */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -368,7 +368,7 @@ export function CommunityReports() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {filteredReports.map((report) => (
                 <div
                   key={report.id}

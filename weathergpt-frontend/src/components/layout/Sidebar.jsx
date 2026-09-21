@@ -68,24 +68,24 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sticky top-16 h-[calc(100vh-4rem)] p-4 transition-colors z-30 overflow-y-auto">
+    <aside className="hidden md:flex flex-col w-64 lg:w-72 xl:w-80 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sticky top-16 h-[calc(100vh-4rem)] p-4 lg:p-5 xl:p-6 transition-all duration-300 z-30 overflow-y-auto">
       {/* Navigation Links */}
       <nav className="space-y-1.5 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 shadow-subtle border border-brand-200/60 dark:border-brand-800/60'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`
-              }
-            >
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center justify-between px-3.5 py-3 lg:px-4 lg:py-3.5 rounded-2xl text-sm lg:text-base font-medium transition-all duration-300 ${
+                    isActive
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 shadow-subtle border border-brand-200/60 dark:border-brand-800/60'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  }`
+                }
+              >
               <div className="flex items-center gap-3">
                 <Icon className="w-5 h-5 shrink-0" />
                 <span>{item.label}</span>

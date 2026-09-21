@@ -64,7 +64,7 @@ export function DailyForecast() {
                 </span>
                 
                 {/* Visual Bar */}
-                <div className="w-16 sm:w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                <div className="w-12 sm:w-20 md:w-24 lg:w-28 xl:w-36 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex transition-all">
                   <div className="h-full bg-gradient-to-r from-sky-400 via-brand-500 to-amber-500 rounded-full w-full" />
                 </div>
 

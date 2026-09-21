@@ -160,7 +160,7 @@ export function Assistant() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-7.5rem)] flex flex-col justify-between pb-1 sm:pb-2">
+    <div className="max-w-5xl xl:max-w-6xl mx-auto h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-7.5rem)] flex flex-col justify-between pb-1 sm:pb-2 transition-all duration-300">
       {/* Messages Stream or Gemini Hero Greeting */}
       {messages.length === 0 ? (
         <div className="flex-1 flex flex-col justify-center px-1 sm:px-4 py-2 sm:py-4 overflow-y-auto animate-in fade-in duration-300">
@@ -187,12 +187,12 @@ export function Assistant() {
 
           {/* Gemini Typography Headline */}
           <div className="mb-3 sm:mb-4">
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold tracking-tight leading-tight transition-all duration-300">
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-500 dark:from-sky-300 dark:via-indigo-300 dark:to-pink-300 bg-clip-text text-transparent">
                 {user ? `Hello, ${user.full_name || user.username}` : currentLanguage === 'hi' ? 'नमस्ते!' : 'Hello, Explorer'}
               </span>
             </h1>
-            <h2 className="text-lg sm:text-2xl lg:text-3xl font-medium text-slate-400 dark:text-slate-400 mt-1 tracking-tight">
+            <h2 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-medium text-slate-400 dark:text-slate-400 mt-1 sm:mt-2 tracking-tight transition-all duration-300">
               {currentLanguage === 'hi'
                 ? 'आज मौसम के बारे में आप क्या जानना चाहते हैं?'
                 : 'How can I help with the weather today?'}
@@ -200,9 +200,9 @@ export function Assistant() {
           </div>
 
           {/* Active Context Bar */}
-          <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 text-xs">
+          <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 text-xs xl:text-sm transition-all duration-300">
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-xs">
-              <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-brand-500 shrink-0" />
               <span>Location: <strong>{selectedCity}</strong></span>
               {weatherData?.current && (
                 <>
@@ -218,13 +218,13 @@ export function Assistant() {
               to="/dashboard"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors font-semibold"
             >
-              <LayoutDashboard className="w-3.5 h-3.5" />
+              <LayoutDashboard className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
               <span>Telemetry Dashboard →</span>
             </Link>
           </div>
 
           {/* Prompt Suggestion Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 xl:gap-4 mb-2 transition-all duration-300">
             {geminiCards.map((card, idx) => {
               const Icon = card.icon;
               return (

@@ -18,7 +18,7 @@ export function WeatherMapPage() {
   const focusCoords = latParam && lonParam ? [parseFloat(latParam), parseFloat(lonParam)] : null;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-screen-2xl mx-auto pb-12 transition-all duration-300">
       {/* Top Header & Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -42,9 +42,9 @@ export function WeatherMapPage() {
       </div>
 
       {/* Map Card */}
-      <div className="relative">
+      <div className="relative w-full h-[65vh] md:h-[70vh] xl:h-[75vh] 2xl:h-[80vh] min-h-[500px] transition-all duration-300">
         <WeatherMap
-          height="620px"
+          height="100%"
           focusCoords={focusCoords}
           focusReportId={reportId}
         />

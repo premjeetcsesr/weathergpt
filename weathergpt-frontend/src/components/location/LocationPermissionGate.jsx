@@ -3,7 +3,7 @@ import { CloudLightning, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useWeather } from '../../context/WeatherContext';
 
 export function LocationPermissionGate() {
-  const { useCurrentLocation, isLocating, locationError } = useWeather();
+  const { useCurrentLocation, isLocating, locationError, searchCity } = useWeather();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -45,6 +45,19 @@ export function LocationPermissionGate() {
             </>
           )}
         </button>
+
+        <div className="mt-4 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Or enter city manually..."
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                searchCity(e.currentTarget.value.trim());
+              }
+            }}
+          />
+        </div>
 
         {locationError && (
           <p role="alert" className="mt-4 text-sm font-medium text-red-600 dark:text-red-400">

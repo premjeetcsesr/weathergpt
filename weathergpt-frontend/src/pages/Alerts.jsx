@@ -141,7 +141,7 @@ export function Alerts() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div className="space-y-6 max-w-screen-2xl mx-auto pb-12 transition-all duration-300">
       {/* Header with WebSocket Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

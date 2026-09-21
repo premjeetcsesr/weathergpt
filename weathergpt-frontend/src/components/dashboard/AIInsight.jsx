@@ -31,10 +31,10 @@ export function AIInsight() {
             <Sparkles className="w-4 h-4 animate-spin-slow" />
           </div>
           <div>
-            <span className="text-xs font-semibold text-brand-300 uppercase tracking-wider block">
+            <span className="text-xs sm:text-sm font-semibold text-brand-300 uppercase tracking-wider block transition-all">
               {t('aiInsightTitle')}
             </span>
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-white tracking-tight transition-all">
               {ai_insight.headline}
             </h2>
           </div>
@@ -47,7 +47,7 @@ export function AIInsight() {
       </div>
 
       {/* Insight Summary */}
-      <p className="text-sm text-slate-200 leading-relaxed mb-5 relative z-10">
+      <p className="text-sm lg:text-base xl:text-lg text-slate-200 leading-relaxed mb-5 relative z-10 transition-all">
         "{ai_insight.summary}"
       </p>
 
