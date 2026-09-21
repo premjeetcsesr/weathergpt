@@ -67,11 +67,11 @@ export function MobileNav() {
           <span className="ml-auto text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Features</span>
         </div>
         <nav className="grid grid-cols-2 gap-2">
-          {moreItems.map((item) => {
+          {moreItems.map((item, index) => {
             const Icon = item.icon;
             return (
               <NavLink
-                key={item.to}
+                key={`${item.to}-${index}`}
                 to={item.to}
                 onClick={closeMenu}
                 className={({ isActive }) =>
