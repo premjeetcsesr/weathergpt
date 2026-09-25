@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: weathergpt-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PROJECT_NAME
+        value: WeatherGPT API
+      - key: MONGODB_URL
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: weathergpt
+      - key: WEATHER_API_KEY
+        sync: false
+      - key: VISUAL_CROSSING_API_KEY
+        sync: false
+      - key: DEFAULT_WEATHER_PROVIDER
+        value: openweather
+      - key: LLM_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: GOOGLE_GEOCODING_API_KEY
+        sync: false
+      - key: GOOGLE_ROUTES_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_JAVASCRIPT_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false

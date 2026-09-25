@@ -1,0 +1,108 @@
+services:
+  # -------------------------------------------------------------
+  # MongoDB Database Service (Isolated Internal Network)
+  # -------------------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: weathergpt-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - weathergpt-internal
+    environment:
+      MONGO_INITDB_DATABASE: weathergpt
+    # Port 27017 is NOT exposed to host in production for network isolation
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -------------------------------------------------------------
+  # FastAPI Backend Service
+  # -------------------------------------------------------------
+  backend:
+    build:
+      context: ./weathergpt-backend
+      dockerfile: Dockerfile
+    container_name: weathergpt-backend
+    restart: unless-stopped
+    env_file:
+      - path: ./weathergpt-backend/.env
+        required: false
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PROJECT_NAME=WeatherGPT
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=weathergpt
+      - CORS_ORIGINS=["http://localhost", "http://localhost:80", "http://127.0.0.1", "http://frontend"]
+      - LOG_LEVEL=INFO
+      - RATE_LIMIT_ENABLED=true
+      # Provide keys in your local environment or .env file:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_URL=${CLOUDINARY_URL:-}
+      - CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER:-weathergpt/community_reports}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-weathergpt-super-secure-production-jwt-token-key-2026}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - weathergpt-internal
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 25s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # -------------------------------------------------------------
+  # React / Vite Static Frontend Service (Nginx)
+  # -------------------------------------------------------------
+  frontend:
+    build:
+      context: ./weathergpt-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=/api/v1
+        - VITE_WS_BASE_URL=/api/v1
+    container_name: weathergpt-frontend
+    restart: unless-stopped
+    networks:
+      - weathergpt-internal
+    expose:
+      - "80"
+
+  # -------------------------------------------------------------
+  # Edge Reverse Proxy / Ingress (Nginx)
+  # -------------------------------------------------------------
+  proxy:
+    image: nginx:1.25-alpine
+    container_name: weathergpt-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - weathergpt-internal
+
+networks:
+  weathergpt-internal:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

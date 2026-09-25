@@ -1,0 +1,62 @@
+# ==========================================
+# WeatherGPT Root Git Ignore
+# ==========================================
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+!.env.development
+!.env.production.example
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts & distributions
+dist/
+build/
+*.egg-info/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & code coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.nyc_output/
+
+# IDEs & OS specific
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs & temporary files
+*.log
+*.pid
+scratch/
+tmp/
+
+.vercel
+.env*
