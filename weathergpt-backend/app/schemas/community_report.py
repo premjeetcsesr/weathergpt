@@ -20,6 +20,7 @@ class ReportCategory(str, Enum):
     POOR_VISIBILITY = "poor_visibility"
     EXTREME_HEAT = "extreme_heat"
     HIGH_WIND = "high_wind"
+    DAMAGED_ROAD = "damaged_road"
     OTHER_WEATHER_INCIDENT = "other_weather_incident"
     OTHER = "other"
 
@@ -35,6 +36,7 @@ CATEGORY_METADATA = {
     ReportCategory.POOR_VISIBILITY: {"name": "Poor Visibility", "icon": "🌫️", "color": "slate"},
     ReportCategory.EXTREME_HEAT: {"name": "Extreme Heat", "icon": "🔥", "color": "orange"},
     ReportCategory.HIGH_WIND: {"name": "High Wind", "icon": "💨", "color": "teal"},
+    ReportCategory.DAMAGED_ROAD: {"name": "Damaged Road", "icon": "🕳️", "color": "rose"},
     ReportCategory.OTHER_WEATHER_INCIDENT: {"name": "Other Weather Incident", "icon": "🌳", "color": "purple"},
     ReportCategory.OTHER: {"name": "Other", "icon": "📍", "color": "gray"},
 }
@@ -89,16 +91,23 @@ class CommunityReportResponse(BaseModel):
     category_icon: str = Field(..., description="Category icon emoji")
     description: str = Field(..., description="Incident description")
     location: LatLonLocation = Field(..., description="GPS coordinates")
+    latitude: Optional[float] = Field(default=None, description="Direct latitude coordinate")
+    longitude: Optional[float] = Field(default=None, description="Direct longitude coordinate")
     location_name: Optional[str] = Field(default=None, description="Reported place name")
     image_url: Optional[str] = Field(default=None, description="Cloudinary-hosted photo URL")
+    image_public_id: Optional[str] = Field(default=None, description="Cloudinary public asset ID")
     status: str = Field(..., description="Moderation status: PENDING, VERIFIED, or REJECTED")
     reported_at: datetime = Field(..., description="Server timestamp of report creation")
     source: str = Field(default="COMMUNITY", description="Always COMMUNITY. Never official IMD warning.")
     verified_at: Optional[datetime] = Field(default=None, description="Timestamp of moderation verification")
+    verified_by: Optional[str] = Field(default=None, description="Moderator identifier who verified report")
     rejection_reason: Optional[str] = Field(default=None, description="Rejection reason if report was rejected")
     user_display: str = Field(default="Community Member", description="Privacy-safe display handle without personal info")
     is_verified: bool = Field(default=False, description="True if report has been approved by a moderator")
+    ai_verification_notes: Optional[str] = Field(default=None, description="AI verification summary corroborating live weather telemetry")
+    confidence_score: Optional[float] = Field(default=None, description="AI verification confidence score 0.0 - 1.0")
     distance_km: Optional[float] = Field(default=None, description="Calculated distance in km when queried via nearby API")
+    distance_meters: Optional[float] = Field(default=None, description="Calculated distance in meters when queried via nearby API")
 
     model_config = ConfigDict(from_attributes=True)
 

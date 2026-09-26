@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug_value(cls, v: Any) -> bool:
+        if isinstance(v, str):
+            if v.lower() in ("true", "1", "yes", "on", "t"):
+                return True
+            if v.lower() in ("false", "0", "no", "off", "f"):
+                return False
+            return True
+        return bool(v)
 
     @field_validator("DEBUG", mode="after")
     @classmethod

@@ -19,7 +19,7 @@ import { ErrorMessage } from '../components/common/ErrorMessage';
 import { RefreshCw } from 'lucide-react';
 
 export function Dashboard() {
-  const { loading, error, refreshWeather, selectedCity, weatherData } = useWeather();
+  const { loading, error, refreshWeather, selectedCity, weatherData, openDedicatedAlertsPanel } = useWeather();
   const { t } = useLanguage();
 
   const [advancedData, setAdvancedData] = useState(null);
@@ -50,10 +50,12 @@ export function Dashboard() {
         onThemeChange={setActiveAtmosphere} 
       />
 
-      {/* Official Warning Banner (Prominent on EXTREME / SEVERE warnings) */}
-      {advancedData?.warnings && (
-        <OfficialWarningBanner warningsData={advancedData.warnings} />
-      )}
+      {/* Official Warning Banner (Exact replicate of Screenshot 3) */}
+      <OfficialWarningBanner
+        warningsData={advancedData?.warnings}
+        onOpenDedicatedPanel={openDedicatedAlertsPanel}
+        locationName={selectedCity || 'Kanpur'}
+      />
 
       {/* Top Search & Geolocation Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

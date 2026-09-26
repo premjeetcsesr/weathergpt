@@ -14,6 +14,7 @@ from app.api.routes import (
     websocket,
     community_reports,
     nearby_places,
+    map as map_routes,
 )
 
 api_router = APIRouter()
@@ -32,6 +33,8 @@ api_router.include_router(notifications.router)
 api_router.include_router(websocket.router)
 api_router.include_router(community_reports.router)
 api_router.include_router(nearby_places.router)
+api_router.include_router(map_routes.router)
+
 
 
 

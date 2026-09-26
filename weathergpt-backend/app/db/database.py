@@ -63,3 +63,8 @@ async def get_db() -> AsyncGenerator[Optional[AsyncSession], None]:
             raise
         finally:
             await session.close()
+
+
+# MongoDB database dependency alias
+from app.db.mongodb import get_mongo_database as get_database
+

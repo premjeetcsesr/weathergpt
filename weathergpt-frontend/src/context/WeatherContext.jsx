@@ -9,6 +9,7 @@ import {
   deleteSavedLocationFromBackend,
 } from '../services/weatherApi';
 import { useAlertWebSocket } from '../services/useAlertWebSocket';
+import { triggerSevereWeatherAlert } from '../services/alertToneService';
 
 const WeatherContext = createContext();
 
@@ -29,6 +30,11 @@ export function WeatherProvider({ children }) {
   const [error, setError] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
   const [savedLocations, setSavedLocations] = useState([]);
+
+  // Dedicated alerts panel modal state
+  const [isDedicatedPanelOpen, setIsDedicatedPanelOpen] = useState(false);
+  const openDedicatedAlertsPanel = useCallback(() => setIsDedicatedPanelOpen(true), []);
+  const closeDedicatedAlertsPanel = useCallback(() => setIsDedicatedPanelOpen(false), []);
 
   // Active floating alert toast state
   const [activeToast, setActiveToast] = useState(null);
@@ -103,9 +109,9 @@ export function WeatherProvider({ children }) {
     localStorage.setItem('weathergpt_recent_searches', JSON.stringify(recentSearches));
   }, [recentSearches]);
 
-  // Load weather for city
-  const loadCityWeather = useCallback(async (city) => {
-    if (!city || !city.trim()) {
+  // Load weather for city or coordinates
+  const loadCityWeather = useCallback(async (query) => {
+    if (!query) {
       setWeatherData(null);
       setHourlyForecast([]);
       setDailyForecast([]);
@@ -116,16 +122,21 @@ export function WeatherProvider({ children }) {
     }
     setLoading(true);
     setError(null);
+
+    const isCoordQuery = typeof query === 'object' && query !== null && query.lat != null && query.lon != null;
+    const activeCity = isCoordQuery ? (query.city || query.name || null) : String(query).trim();
+    const lat = isCoordQuery ? query.lat : null;
+    const lon = isCoordQuery ? query.lon : null;
+
     try {
-      let activeCity = city.trim();
       let [currentRes, forecastRes, alertsRes] = await Promise.all([
-        getCurrentWeather(activeCity),
-        getForecast(activeCity),
-        getWeatherAlerts(activeCity)
+        getCurrentWeather(activeCity, lat, lon),
+        getForecast(activeCity, lat, lon),
+        getWeatherAlerts(activeCity, 'All', lat, lon)
       ]);
 
       // If failed and city has multiple words (e.g. "Kanpur dehat"), attempt base city fallback
-      if ((!currentRes.success || !currentRes.data) && activeCity.includes(' ')) {
+      if ((!currentRes.success || !currentRes.data) && !isCoordQuery && activeCity && activeCity.includes(' ')) {
         const baseCity = activeCity.split(' ')[0];
         try {
           const [fallbackCurrent, fallbackForecast, fallbackAlerts] = await Promise.all([
@@ -134,7 +145,6 @@ export function WeatherProvider({ children }) {
             getWeatherAlerts(baseCity)
           ]);
           if (fallbackCurrent.success && fallbackCurrent.data) {
-            activeCity = baseCity;
             currentRes = fallbackCurrent;
             forecastRes = fallbackForecast;
             alertsRes = fallbackAlerts;
@@ -149,8 +159,23 @@ export function WeatherProvider({ children }) {
           currentRes.data.location.city = 'Kanpur';
         }
         setWeatherData(currentRes.data);
+        if (currentRes.data.location?.city) {
+          setSelectedCity(currentRes.data.location.city);
+        }
+        setLocationReady(true);
+
+        // Check if active heavy rain / severe precipitation exists
+        const curCond = (currentRes.data.current?.condition || '').toLowerCase();
+        if (curCond.includes('heavy rain') || curCond.includes('storm') || curCond.includes('flood') || curCond.includes('torrential')) {
+          triggerSevereWeatherAlert({
+            title: `Heavy Rain Alert for ${currentRes.data.location?.city || activeCity}`,
+            body: `Doppler radar reports ${currentRes.data.current.condition}. Waterlogging caution advised.`,
+            alertId: `rain-${activeCity}-${new Date().toISOString().slice(0, 13)}`,
+            isReport: false
+          });
+        }
       } else {
-        throw new Error(`Location not found: "${city}". Please check spelling or choose your current location.`);
+        throw new Error(currentRes.error || `Could not find weather records for "${activeCity || 'selected location'}".`);
       }
 
       if (forecastRes.success) {
@@ -166,10 +191,18 @@ export function WeatherProvider({ children }) {
             ['extreme', 'severe', 'moderate'].includes((a.severity || '').toLowerCase())
           ) || alertsRes.alerts[0];
 
-          const alertKey = notableAlert ? (notableAlert.id || notableAlert.alert_id || `${activeCity}-${notableAlert.event}`) : null;
+          const alertKey = notableAlert ? (notableAlert.id || notableAlert.alert_id || `${activeCity || 'loc'}-${notableAlert.event}`) : null;
           if (alertKey && lastAlertToastIdRef.current !== alertKey) {
             lastAlertToastIdRef.current = alertKey;
             setActiveToast(notableAlert);
+
+            // Play siren tone & send mobile phone notification ("alert ay ak bar")
+            triggerSevereWeatherAlert({
+              title: notableAlert.event || notableAlert.title || 'Meteorological Alert',
+              body: notableAlert.headline || notableAlert.description || `Severe weather alert for ${activeCity}`,
+              alertId: alertKey,
+              isReport: !!notableAlert.is_community
+            });
           }
         }
       } else {
@@ -177,7 +210,7 @@ export function WeatherProvider({ children }) {
       }
     } catch (err) {
       console.error('Weather load error:', err);
-      setError(`Location not found: "${city}". Please check spelling or choose your current location.`);
+      setError(`Could not find weather records for "${activeCity || 'selected location'}". Please check spelling or use your live location.`);
     } finally {
       setLoading(false);
     }
@@ -185,7 +218,9 @@ export function WeatherProvider({ children }) {
 
   // Initial load or city switch
   useEffect(() => {
-    loadCityWeather(selectedCity);
+    if (selectedCity) {
+      loadCityWeather(selectedCity);
+    }
   }, [selectedCity, loadCityWeather]);
 
   // Search & select city
@@ -193,6 +228,7 @@ export function WeatherProvider({ children }) {
     if (!city || city.trim().length === 0) return;
     const formatted = city.trim();
     setSelectedCity(formatted);
+    loadCityWeather(formatted);
     setLocationReady(true);
     setRecentSearches((prev) => {
       const filtered = prev.filter((c) => c.toLowerCase() !== formatted.toLowerCase());
@@ -202,62 +238,83 @@ export function WeatherProvider({ children }) {
 
   // Browser Geolocation with IP Fallback
   const useCurrentLocation = () => {
+    setIsLocating(true);
+    setLocationError(null);
+    setError(null);
+
+    const tryIpFallback = async () => {
+      console.warn('Attempting multi-service IP geolocation fallback...');
+      const ipEndpoints = [
+        'https://ipapi.co/json/',
+        'https://get.geojs.io/v1/ip/geo.json',
+        'https://ipwhois.app/json/'
+      ];
+
+      for (const ep of ipEndpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const res = await fetch(ep, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = await res.json();
+            const lat = parseFloat(data.latitude || data.lat);
+            const lon = parseFloat(data.longitude || data.lon);
+            const city = data.city || data.region || 'Kanpur';
+            if (!isNaN(lat) && !isNaN(lon)) {
+              await loadCityWeather({ lat, lon, city });
+              setIsLocating(false);
+              return true;
+            }
+          }
+        } catch (e) {
+          console.warn(`IP endpoint ${ep} failed:`, e.message);
+        }
+      }
+      return false;
+    };
+
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser.');
+      tryIpFallback().then((success) => {
+        if (!success) {
+          setIsLocating(false);
+          setLocationError('Geolocation is not supported by your browser.');
+        }
+      });
       return;
     }
 
-    setIsLocating(true);
-    setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
-          let detectedCity = await getCityByCoordinates(lat, lon);
-          if (detectedCity && detectedCity.toLowerCase().includes('alok mishra')) {
-            detectedCity = 'Kanpur';
-          }
-          if (detectedCity) {
-            searchCity(detectedCity);
-            setLocationReady(true);
-          } else {
-            setLocationError('Could not resolve your location to a city.');
-          }
+          await loadCityWeather({ lat, lon });
         } catch (err) {
-          console.error('Geolocation reverse lookup error:', err);
-          setLocationError('Could not determine your location. Please try again.');
+          console.error('GPS coordinates weather fetch error:', err);
+          const fallbackOk = await tryIpFallback();
+          if (!fallbackOk) {
+            setLocationError('Could not determine your live location weather.');
+          }
         } finally {
           setIsLocating(false);
         }
       },
       async (geoError) => {
-        console.warn('Geolocation access denied or timed out:', geoError.message, 'Attempting IP fallback.');
-        try {
-          // IP-based Fallback
-          const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
-          if (ipRes.ok) {
-            const data = await ipRes.json();
-            if (data.city) {
-              const detected = data.city.toLowerCase().includes('alok mishra') ? 'Kanpur' : data.city;
-              searchCity(detected);
-              setLocationReady(true);
-              setIsLocating(false);
-              return;
-            }
-          }
-        } catch (ipErr) {
-          console.warn('IP fallback failed:', ipErr);
+        console.warn('Browser geolocation denied or timed out:', geoError.message);
+        const fallbackOk = await tryIpFallback();
+        if (!fallbackOk) {
+          setIsLocating(false);
+          setLocationError(
+            geoError.code === 1
+              ? 'Location permission denied. Please enter your city manually.'
+              : 'Could not obtain GPS lock. Falling back to default city...'
+          );
+          // Safe fallback so user screen never stays broken
+          loadCityWeather('Kanpur');
         }
-
-        setIsLocating(false);
-        setLocationError(
-          geoError.code === 1
-            ? 'Location permission denied. Please enter your city manually.'
-            : 'Could not determine your location. Please try again or enter it manually.'
-        );
       },
-      { timeout: 25000, enableHighAccuracy: true }
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
     );
   };
 
@@ -305,22 +362,30 @@ export function WeatherProvider({ children }) {
     setActiveToast(newAlert);
 
     const alertId = newAlert.id || newAlert.alert_id;
-    const pushEnabled = localStorage.getItem('weathergpt_push_alerts') !== 'false';
-    if (
-      pushEnabled &&
-      alertId &&
-      alertId !== lastBrowserNotificationIdRef.current &&
-      typeof window !== 'undefined' &&
-      'Notification' in window &&
-      Notification.permission === 'granted'
-    ) {
-      lastBrowserNotificationIdRef.current = alertId;
-      new Notification(newAlert.event || newAlert.title || 'Weather Alert', {
-        body: newAlert.headline || newAlert.description || 'A new weather alert was received.',
-        tag: `weathergpt-alert-${alertId}`,
-      });
-    }
+    triggerSevereWeatherAlert({
+      title: newAlert.event || newAlert.title || 'Severe Meteorological Warning',
+      body: newAlert.headline || newAlert.description || 'New real-time weather advisory received.',
+      alertId: alertId,
+      isReport: !!newAlert.is_community
+    });
   }, []);
+
+  // Listen for community reports added across the application
+  useEffect(() => {
+    const handleCommunityReportAdded = (e) => {
+      const rep = e.detail;
+      const cat = rep?.category ? String(rep.category).replace('_', ' ') : 'Weather Incident';
+      const loc = rep?.location_name || selectedCity || 'Monitored Region';
+      triggerSevereWeatherAlert({
+        title: `Citizen Report: ${cat}`,
+        body: `New hazard reported at ${loc}: ${rep?.description || 'Exercise caution and verify routes.'}`,
+        alertId: `report-${rep?.id || Date.now()}`,
+        isReport: true
+      });
+    };
+    window.addEventListener('community-report-added', handleCommunityReportAdded);
+    return () => window.removeEventListener('community-report-added', handleCommunityReportAdded);
+  }, [selectedCity]);
 
   const handleAlertExpired = useCallback((expiredId) => {
     setAlerts((prev) => prev.filter((a) => (a.id || a.alert_id) !== expiredId));
@@ -370,6 +435,11 @@ export function WeatherProvider({ children }) {
         triggerAlertToast,
         dismissToast,
         wsSubscribeCity,
+
+        // Dedicated Alerts Panel Modal
+        isDedicatedPanelOpen,
+        openDedicatedAlertsPanel,
+        closeDedicatedAlertsPanel,
 
         loading,
         error,

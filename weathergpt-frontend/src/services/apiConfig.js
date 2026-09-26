@@ -98,6 +98,11 @@ export const ENDPOINTS = {
   COMMUNITY_REPORTS_NEARBY: `${API_BASE_URL}/community-reports/nearby`,
   COMMUNITY_REPORTS_MY: `${API_BASE_URL}/community-reports/my-reports`,
   PLACES_NEARBY: `${API_BASE_URL}/places/nearby`,
+  // Map Geocoding & Geospatial Endpoints
+  MAP_REVERSE_GEOCODE: `${API_BASE_URL}/map/reverse-geocode`,
+  MAP_LOCATION: `${API_BASE_URL}/map/location`,
+  MAP_COMMUNITY_REPORTS_NEARBY: `${API_BASE_URL}/map/community-reports/nearby`,
 };
+
 
 export const REQUEST_TIMEOUT = 10000; // 10 seconds

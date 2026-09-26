@@ -288,9 +288,31 @@ function mapOWMForecast(data) {
  * Fetch current weather from FastAPI backend
  * @param {string} location - City name
  */
-export async function getCurrentWeather(location = defaultCity) {
+export async function getCurrentWeather(location = defaultCity, lat = null, lon = null) {
   try {
-    const response = await fetch(`${ENDPOINTS.CURRENT_WEATHER}?city=${encodeURIComponent(location)}`, {
+    let url = ENDPOINTS.CURRENT_WEATHER;
+    let effectiveLat = lat;
+    let effectiveLon = lon;
+    let effectiveCity = location;
+
+    if (typeof location === 'object' && location !== null) {
+      effectiveLat = location.lat ?? location.latitude ?? lat;
+      effectiveLon = location.lon ?? location.longitude ?? lon;
+      effectiveCity = location.city ?? location.name ?? null;
+    }
+
+    if (effectiveLat != null && effectiveLon != null) {
+      url = `${ENDPOINTS.CURRENT_WEATHER}?lat=${effectiveLat}&lon=${effectiveLon}`;
+      if (effectiveCity && typeof effectiveCity === 'string') {
+        url += `&city=${encodeURIComponent(effectiveCity)}`;
+      }
+    } else if (effectiveCity && typeof effectiveCity === 'string') {
+      url = `${ENDPOINTS.CURRENT_WEATHER}?city=${encodeURIComponent(effectiveCity)}`;
+    } else {
+      url = `${ENDPOINTS.CURRENT_WEATHER}?city=${encodeURIComponent(defaultCity)}`;
+    }
+
+    const response = await fetch(url, {
       headers: getAuthHeaders()
     });
     if (response.ok) {
@@ -316,11 +338,35 @@ export async function getCurrentWeather(location = defaultCity) {
 
 /**
  * Fetch forecast (hourly + 7-day) from FastAPI backend
- * @param {string} location
+ * @param {string|object} location
+ * @param {number} [lat]
+ * @param {number} [lon]
  */
-export async function getForecast(location = defaultCity) {
+export async function getForecast(location = defaultCity, lat = null, lon = null) {
   try {
-    const response = await fetch(`${ENDPOINTS.FORECAST}?city=${encodeURIComponent(location)}`, {
+    let url = ENDPOINTS.FORECAST;
+    let effectiveLat = lat;
+    let effectiveLon = lon;
+    let effectiveCity = location;
+
+    if (typeof location === 'object' && location !== null) {
+      effectiveLat = location.lat ?? location.latitude ?? lat;
+      effectiveLon = location.lon ?? location.longitude ?? lon;
+      effectiveCity = location.city ?? location.name ?? null;
+    }
+
+    if (effectiveLat != null && effectiveLon != null) {
+      url = `${ENDPOINTS.FORECAST}?lat=${effectiveLat}&lon=${effectiveLon}`;
+      if (effectiveCity && typeof effectiveCity === 'string') {
+        url += `&city=${encodeURIComponent(effectiveCity)}`;
+      }
+    } else if (effectiveCity && typeof effectiveCity === 'string') {
+      url = `${ENDPOINTS.FORECAST}?city=${encodeURIComponent(effectiveCity)}`;
+    } else {
+      url = `${ENDPOINTS.FORECAST}?city=${encodeURIComponent(defaultCity)}`;
+    }
+
+    const response = await fetch(url, {
       headers: getAuthHeaders()
     });
     if (response.ok) {
@@ -346,7 +392,7 @@ export async function getForecast(location = defaultCity) {
         success: true,
         hourly,
         daily,
-        location: data.location || { city: location }
+        location: data.location || { city: typeof effectiveCity === 'string' ? effectiveCity : 'Current Location' }
       };
     }
     return { success: false, hourly: [], daily: [] };
@@ -358,13 +404,31 @@ export async function getForecast(location = defaultCity) {
 
 /**
  * Fetch weather alerts from FastAPI backend
- * @param {string} location
- * @param {string} category
+ * @param {string|object} location
+ * @param {string} [category]
+ * @param {number} [lat]
+ * @param {number} [lon]
  */
-export async function getWeatherAlerts(location = '', category = 'All') {
+export async function getWeatherAlerts(location = '', category = 'All', lat = null, lon = null) {
   try {
     const params = new URLSearchParams();
-    if (location) params.append('city', location);
+    let effectiveLat = lat;
+    let effectiveLon = lon;
+    let effectiveCity = location;
+
+    if (typeof location === 'object' && location !== null) {
+      effectiveLat = location.lat ?? location.latitude ?? lat;
+      effectiveLon = location.lon ?? location.longitude ?? lon;
+      effectiveCity = location.city ?? location.name ?? '';
+    }
+
+    if (effectiveCity && typeof effectiveCity === 'string') {
+      params.append('city', effectiveCity);
+    }
+    if (effectiveLat != null && effectiveLon != null) {
+      params.append('lat', effectiveLat);
+      params.append('lon', effectiveLon);
+    }
     if (category && category !== 'All') params.append('severity', category.toLowerCase());
 
     const response = await fetch(`${ENDPOINTS.ALERTS}?${params.toString()}`, {

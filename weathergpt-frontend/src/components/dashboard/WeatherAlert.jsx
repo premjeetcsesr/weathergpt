@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AlertTriangle, 
   Clock, 
@@ -8,19 +8,126 @@ import {
   ShieldCheck, 
   Radio, 
   Wind, 
-  Waves 
+  Waves,
+  MapPin,
+  Map as MapIcon,
+  Users
 } from 'lucide-react';
 import { useWeather } from '../../context/WeatherContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { SeverityBadge } from '../common/Badge';
 import { Link } from 'react-router-dom';
+import { fetchAllActiveReports } from '../../services/communityReportsApi';
 
 export function WeatherAlert() {
   const { alerts, selectedCity } = useWeather();
   const { t } = useLanguage();
+  const [cityCommunityIncident, setCityCommunityIncident] = useState(null);
 
-  // If no active alerts
+  useEffect(() => {
+    let isCurrent = true;
+    async function checkIncidents() {
+      try {
+        const list = await fetchAllActiveReports();
+        if (!isCurrent) return;
+        if (Array.isArray(list) && list.length > 0) {
+          if (!selectedCity) {
+            setCityCommunityIncident(list[0]);
+          } else {
+            const c = selectedCity.toLowerCase();
+            const matched = list.find((r) => {
+              const loc = (r.location_name || '').toLowerCase();
+              const desc = (r.description || '').toLowerCase();
+              return loc.includes(c) || desc.includes(c);
+            });
+            setCityCommunityIncident(matched || list[0]);
+          }
+        } else {
+          setCityCommunityIncident(null);
+        }
+      } catch {
+        if (isCurrent) setCityCommunityIncident(null);
+      }
+    }
+    checkIncidents();
+    return () => { isCurrent = false; };
+  }, [selectedCity]);
+
+  // If no official active alerts
   if (!alerts || alerts.length === 0) {
+    // If a citizen report exists for this area
+    if (cityCommunityIncident) {
+      const rep = cityCommunityIncident;
+      const rLat = rep.latitude ?? rep.location?.latitude ?? (Array.isArray(rep.location?.coordinates) ? rep.location.coordinates[1] : null);
+      const rLon = rep.longitude ?? rep.location?.longitude ?? (Array.isArray(rep.location?.coordinates) ? rep.location.coordinates[0] : null);
+
+      return (
+        <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-900/60 shadow-card hover:shadow-elevated transition-all font-sans relative overflow-hidden flex flex-col justify-between gap-4 backdrop-blur-md">
+          {/* Subtle Glow Backdrop */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Main Content */}
+          <div className="space-y-3 relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl shrink-0 shadow-sm">
+                  {rep.category_icon || '⚠️'}
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 block">
+                    Citizen Ground Truth Hazard
+                  </span>
+                  <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    {rep.category_name || rep.category} Warning
+                  </h4>
+                </div>
+              </div>
+
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                {rep.status === 'VERIFIED' ? '✓ Verified' : '⏳ Under Review'}
+              </span>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-700 dark:text-slate-200 mt-1 leading-relaxed">
+                &ldquo;{rep.description}&rdquo;
+              </p>
+              <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-red-500" />
+                  {rep.location_name || 'Nearby Area'}
+                </span>
+                {rep.image_url && <span className="text-sky-600 font-bold">• Photo Attached</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Action Links */}
+          <div className="pt-3 border-t border-amber-200/80 dark:border-amber-900/40 flex items-center justify-between relative z-10">
+            {rLat && rLon ? (
+              <Link
+                to={`/map?lat=${rLat}&lon=${rLon}&reportId=${rep.id}`}
+                className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline"
+              >
+                <MapIcon className="w-3.5 h-3.5" />
+                <span>Show On Doppler Map</span>
+              </Link>
+            ) : (
+              <span className="text-[11px] text-amber-700/80 dark:text-amber-400 font-medium">Citizen Hazard Warning</span>
+            )}
+
+            <Link
+              to="/alerts"
+              className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-amber-300 hover:underline group"
+            >
+              <span>View All Alerts</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#0c1527] border border-slate-200/90 dark:border-[#1a2c4e] shadow-card hover:shadow-elevated transition-all font-sans relative overflow-hidden flex flex-col justify-between gap-4 backdrop-blur-md">
         

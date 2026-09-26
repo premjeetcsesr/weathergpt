@@ -16,24 +16,45 @@ import {
   ExternalLink,
   Info,
   Map as MapIcon,
-  ListFilter
+  ListFilter,
+  LocateFixed,
+  Compass,
 } from 'lucide-react';
 import {
   REPORT_CATEGORIES,
   fetchCommunityReports,
   fetchMyReports,
+  fetchAllActiveReports,
+  getStoredReports,
+  INITIAL_COMMUNITY_REPORTS,
   moderateCommunityReport,
   deleteCommunityReport
 } from '../services/communityReportsApi';
 import { ReportModal } from '../components/community/ReportModal';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { createCommunityMarkerIcon } from '../components/map/LocationMarker';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { createCommunityMarkerIcon, createCurrentLocationMarkerIcon } from '../components/map/LocationMarker';
 import { MAP_TILE_BASE_URL } from '../services/apiConfig';
+
+function MapResizeController({ center, zoom = 6 }) {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+      if (center && center[0] && center[1]) {
+        map.setView(center, zoom);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [map, center, zoom]);
+  return null;
+}
 
 export function CommunityReports() {
   const { user, isAuthenticated, openAuthModal } = useAuth();
+
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'map' | 'my-reports' | 'moderation'
@@ -41,8 +62,17 @@ export function CommunityReports() {
   const [timeFilter, setTimeFilter] = useState('all'); // '1h' | '6h' | '24h' | '7d' | 'all'
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [reports, setReports] = useState([]);
-  const [myReports, setMyReports] = useState([]);
+  const [reports, setReports] = useState(() => getStoredReports());
+  const [myReports, setMyReports] = useState(() => {
+    try {
+      const cached = localStorage.getItem('weathergpt_user_my_reports');
+      if (cached) {
+        const p = JSON.parse(cached);
+        if (Array.isArray(p) && p.length > 0) return p;
+      }
+    } catch {}
+    return INITIAL_COMMUNITY_REPORTS.slice(0, 3);
+  });
   const [moderationReports, setModerationReports] = useState([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -51,17 +81,17 @@ export function CommunityReports() {
 
   const isAdmin = user?.role === 'admin';
 
-  // Load verified public reports
+  // Load verified public reports and merge with persistent stored reports
   const loadPublicReports = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await fetchCommunityReports({
+      const items = await fetchAllActiveReports({
         category: selectedCategory,
         timeFilter,
-        page: 1,
-        pageSize: 50
       });
-      setReports(data.items || []);
+      if (Array.isArray(items) && items.length > 0) {
+        setReports(items);
+      }
     } catch (err) {
       console.warn('Failed to load community reports:', err);
     } finally {
@@ -71,14 +101,15 @@ export function CommunityReports() {
 
   // Load user's own reports
   const loadMyReports = useCallback(async () => {
-    if (!isAuthenticated) return;
     try {
       const data = await fetchMyReports();
-      setMyReports(data || []);
+      if (Array.isArray(data) && data.length > 0) {
+        setMyReports(data);
+      }
     } catch (err) {
       console.warn('Failed to load user reports:', err);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   // Load pending reports for moderation (admin only)
   const loadModerationQueue = useCallback(async () => {
@@ -156,6 +187,21 @@ export function CommunityReports() {
       r.category_name?.toLowerCase().includes(q)
     );
   });
+
+  // Merge public reports and user's personal submissions for the map view so all submissions appear
+  const mapDisplayReports = React.useMemo(() => {
+    const list = [...filteredReports];
+    const seen = new Set(list.map((r) => r.id));
+    if (Array.isArray(myReports)) {
+      for (const m of myReports) {
+        if (!seen.has(m.id)) {
+          seen.add(m.id);
+          list.push(m);
+        }
+      }
+    }
+    return list;
+  }, [filteredReports, myReports]);
 
   return (
     <div className="space-y-6 max-w-screen-2xl mx-auto pb-12 animate-fade-in transition-all duration-300">
@@ -393,16 +439,24 @@ export function CommunityReports() {
                       </div>
 
                       {/* Verified Badge */}
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Verified</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shadow-xs">
+                        <span>✨</span>
+                        <span>AI Verified</span>
                       </span>
                     </div>
 
                     {/* Description */}
-                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-2 font-medium">
                       &ldquo;{report.description}&rdquo;
                     </p>
+
+                    {/* AI Verification Corroboration Notes */}
+                    {report.ai_verification_notes && (
+                      <div className="mb-3 p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/50 text-[10px] text-emerald-700 dark:text-emerald-300 leading-tight flex items-start gap-1">
+                        <span>🌦️</span>
+                        <span>{report.ai_verification_notes}</span>
+                      </div>
+                    )}
 
                     {/* Photo if present */}
                     {report.image_url ? (
@@ -459,28 +513,37 @@ export function CommunityReports() {
               maxZoom={16}
             />
 
-            {filteredReports.map((report) => {
-              if (!report.location?.latitude || !report.location?.longitude) return null;
+            {mapDisplayReports.map((report) => {
+              const rLat = report.latitude ?? report.location?.latitude ?? (Array.isArray(report.location?.coordinates) ? report.location.coordinates[1] : null);
+              const rLon = report.longitude ?? report.location?.longitude ?? (Array.isArray(report.location?.coordinates) ? report.location.coordinates[0] : null);
+              if (!rLat || !rLon) return null;
+              const isVerified = report.status === 'VERIFIED' || report.is_verified;
               return (
                 <Marker
                   key={`map-report-${report.id}`}
-                  position={[report.location.latitude, report.location.longitude]}
+                  position={[rLat, rLon]}
                   icon={createCommunityMarkerIcon(
                     report.category,
                     report.category_icon,
-                    report.is_verified
+                    isVerified
                   )}
                 >
                   <Popup>
-                    <div className="p-2 max-w-xs text-xs space-y-2">
+                    <div className="p-2.5 max-w-xs text-xs space-y-2 text-slate-900">
                       <div className="flex items-center justify-between border-b pb-1">
                         <span className="font-bold flex items-center gap-1 text-slate-900">
                           <span>{report.category_icon}</span>
-                          <span>{report.category_name}</span>
+                          <span>{report.category_name || report.category}</span>
                         </span>
-                        <span className="text-[10px] text-emerald-600 font-semibold">
-                          ✓ Verified
-                        </span>
+                        {isVerified ? (
+                          <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            ✓ Verified
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            ⏳ Under Review
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-slate-700 leading-snug">
@@ -491,12 +554,12 @@ export function CommunityReports() {
                         <img
                           src={report.image_url}
                           alt="Report Photo"
-                          className="w-full h-24 object-cover rounded-lg cursor-pointer"
+                          className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-95"
                           onClick={() => setSelectedImage(report.image_url)}
                         />
                       )}
 
-                      <div className="text-[10px] text-slate-500 pt-1 border-t flex justify-between">
+                      <div className="text-[10px] text-slate-500 pt-1 border-t flex justify-between items-center">
                         <span>📍 {report.location_name || 'Reported Location'}</span>
                         <span>{formatTime(report.reported_at)}</span>
                       </div>
@@ -593,16 +656,33 @@ export function CommunityReports() {
                       </span>
                     )}
 
-                    {report.status === 'PENDING' && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(report.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                        title="Delete Pending Report"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/* View on Map Button */}
+                    {(() => {
+                      const repLat = report.latitude ?? report.location?.latitude ?? (Array.isArray(report.location?.coordinates) ? report.location.coordinates[1] : null);
+                      const repLon = report.longitude ?? report.location?.longitude ?? (Array.isArray(report.location?.coordinates) ? report.location.coordinates[0] : null);
+                      if (repLat && repLon) {
+                        return (
+                          <a
+                            href={`/map?lat=${repLat}&lon=${repLon}&reportId=${report.id}`}
+                            className="px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 hover:bg-sky-100 text-xs font-semibold flex items-center gap-1 transition-colors border border-sky-200 dark:border-sky-800"
+                            title="View report pin on Weather Map"
+                          >
+                            <MapIcon className="w-3 h-3" />
+                            <span>View on Map</span>
+                          </a>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(report.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      title="Delete Report"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -728,9 +808,14 @@ export function CommunityReports() {
       <ReportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(newReport) => {
+          if (newReport) {
+            const repId = newReport.id || newReport._id;
+            setReports((prev) => [newReport, ...prev.filter((r) => (r.id || r._id) !== repId)]);
+            setMyReports((prev) => [newReport, ...prev.filter((r) => (r.id || r._id) !== repId)]);
+          }
           loadPublicReports();
-          if (isAuthenticated) loadMyReports();
+          loadMyReports();
         }}
       />
 

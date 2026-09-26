@@ -34,6 +34,52 @@ export function createCustomMarkerIcon(city = "Location", temp = "31°C", type =
   });
 }
 
+/**
+ * Live GPS Device Location Marker (Pulsing blue beacon)
+ */
+export function createCurrentLocationMarkerIcon() {
+  const html = `
+    <div class="relative cursor-pointer" style="transform: translate(-50%, -50%);">
+      <div class="absolute -inset-2.5 rounded-full bg-sky-500/40 animate-ping"></div>
+      <div class="absolute -inset-1 rounded-full bg-sky-400/60 animate-pulse"></div>
+      <div class="relative w-5 h-5 rounded-full bg-gradient-to-tr from-sky-600 to-blue-500 border-2 border-white shadow-xl flex items-center justify-center">
+        <span class="w-2 h-2 rounded-full bg-white"></span>
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html: html,
+    className: 'custom-current-gps-marker',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -15]
+  });
+}
+
+/**
+ * Choice Location Marker (User selected on map click or search)
+ */
+export function createChoiceLocationMarkerIcon(label = "Selected Location") {
+  const html = `
+    <div class="relative group cursor-pointer" style="transform: translate(-50%, -100%);">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-2xl text-xs font-black whitespace-nowrap border-2 border-white ring-2 ring-orange-400/50 animate-bounce">
+        <span>📍</span>
+        <span class="max-w-[120px] truncate">${label}</span>
+      </div>
+      <div class="w-3 h-3 bg-red-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white"></div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html: html,
+    className: 'custom-choice-location-marker',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -40]
+  });
+}
+
 export function createAlertMarkerIcon(alertTitle = "Alert", severity = "Severe") {
   const color = severity === 'Extreme' ? '#ef4444' : '#f97316';
 
@@ -90,4 +136,3 @@ export function createCommunityMarkerIcon(category = "incident", icon = "📍", 
     popupAnchor: [0, -18]
   });
 }
-

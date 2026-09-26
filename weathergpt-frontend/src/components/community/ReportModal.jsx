@@ -190,10 +190,6 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!isAuthenticated) {
-      if (openAuthModal) openAuthModal();
-      return;
-    }
 
     if (!latitude || !longitude) {
       setErrorMessage('GPS Location is required. Please click "Detect GPS" or provide coordinates.');

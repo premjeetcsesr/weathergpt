@@ -1290,7 +1290,7 @@ class MongoCommunityReportRepository:
     async def list_reports(
         self,
         category: Optional[str] = None,
-        status: Optional[str] = None,
+        status: Optional[Any] = None,
         start_time: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 20,
@@ -1303,7 +1303,16 @@ class MongoCommunityReportRepository:
         if category:
             query["category"] = category.lower().strip()
         if status:
-            query["status"] = status.upper().strip()
+            if isinstance(status, (list, tuple, set)):
+                query["status"] = {"$in": [str(s).upper().strip() for s in status]}
+            elif isinstance(status, str) and status.upper().strip() in ("ACTIVE", "ALL_ACTIVE"):
+                query["status"] = {"$in": ["VERIFIED", "PENDING"]}
+            elif isinstance(status, str) and status.upper().strip() == "ALL":
+                pass
+            else:
+                query["status"] = str(status).upper().strip()
+        else:
+            query["status"] = {"$in": ["VERIFIED", "PENDING"]}
         if start_time:
             query["reported_at"] = {"$gte": start_time}
 
@@ -1318,7 +1327,8 @@ class MongoCommunityReportRepository:
         longitude: float,
         radius_km: float = 25.0,
         category: Optional[str] = None,
-        status: Optional[str] = "VERIFIED",
+        status: Optional[Any] = None,
+        start_time: Optional[datetime] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """Query nearby reports using geospatial indexing with Haversine distance fallback."""
@@ -1327,9 +1337,20 @@ class MongoCommunityReportRepository:
 
         base_query: Dict[str, Any] = {}
         if status:
-            base_query["status"] = status.upper().strip()
+            if isinstance(status, (list, tuple, set)):
+                base_query["status"] = {"$in": [str(s).upper().strip() for s in status]}
+            elif isinstance(status, str) and status.upper().strip() in ("ACTIVE", "ALL_ACTIVE"):
+                base_query["status"] = {"$in": ["VERIFIED", "PENDING"]}
+            elif isinstance(status, str) and status.upper().strip() == "ALL":
+                pass
+            else:
+                base_query["status"] = str(status).upper().strip()
+        else:
+            base_query["status"] = {"$in": ["VERIFIED", "PENDING"]}
         if category:
             base_query["category"] = category.lower().strip()
+        if start_time:
+            base_query["reported_at"] = {"$gte": start_time}
 
         # Try MongoDB 2dsphere nearSphere query first
         reports = []

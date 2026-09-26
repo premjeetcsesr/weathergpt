@@ -1,12 +1,19 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.deps import (
     get_alert_repo,
     get_alert_service,
     get_alert_sub_repo,
+    get_community_report_repo,
     get_current_user_optional,
 )
-from app.db.mongo_repositories import MongoAlertRepository, MongoAlertSubscriptionRepository
+from app.core.logging import logger
+from app.db.mongo_repositories import (
+    MongoAlertRepository,
+    MongoAlertSubscriptionRepository,
+    MongoCommunityReportRepository,
+)
 from app.schemas.alerts import (
     AlertHistoryResponse,
     AlertSubscriptionCreate,
@@ -40,6 +47,7 @@ async def get_alerts(
     severity: Optional[str] = Query(default=None, description="Filter by severity: minor, moderate, severe, extreme"),
     active: bool = Query(default=True, description="Filter only active alerts"),
     alert_service: AlertService = Depends(get_alert_service),
+    community_repo: MongoCommunityReportRepository = Depends(get_community_report_repo),
 ) -> AlertsResponse:
     effective_lat = latitude if latitude is not None else lat
     effective_lon = longitude if longitude is not None else lon
@@ -47,25 +55,59 @@ async def get_alerts(
     if effective_lat is not None and effective_lon is not None:
         validate_coordinates(effective_lat, effective_lon)
         resolved_city = city or f"Coord({effective_lat:.2f},{effective_lon:.2f})"
-        return await alert_service.get_alerts(
+        res = await alert_service.get_alerts(
             city=resolved_city,
             lat=effective_lat,
             lon=effective_lon,
             severity=severity,
             active_only=active,
         )
-
-    if not city or not city.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Provide a city name or latitude and longitude.",
+    else:
+        if not city or not city.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Provide a city name or latitude and longitude.",
+            )
+        resolved_city = validate_city_name(city)
+        res = await alert_service.get_alerts(
+            city=resolved_city,
+            severity=severity,
+            active_only=active,
         )
-    validated_city = validate_city_name(city)
-    return await alert_service.get_alerts(
-        city=validated_city,
-        severity=severity,
-        active_only=active,
-    )
+
+    # Also augment with citizen ground-truth incident reports
+    try:
+        comm_docs, _ = await community_repo.list_reports(status=["VERIFIED", "PENDING"], limit=30)
+        c_low = resolved_city.lower()
+        for doc in comm_docs:
+            loc_str = str(doc.get("location_name", "")).lower()
+            desc_str = str(doc.get("description", "")).lower()
+            if c_low in loc_str or c_low in desc_str or not city:
+                cat = str(doc.get("category", "incident"))
+                rep_time = doc.get("reported_at") or doc.get("created_at") or datetime.now(timezone.utc)
+                iso_time = rep_time.isoformat() if hasattr(rep_time, "isoformat") else str(rep_time)
+                comm_item = WeatherAlertItem(
+                    id=str(doc.get("id") or doc.get("_id")),
+                    alert_id=str(doc.get("id") or doc.get("_id")),
+                    event=f"Citizen Report: {cat.replace('_', ' ').title()}",
+                    title=f"Citizen Report: {cat.replace('_', ' ').title()}",
+                    severity="severe" if cat in ("heavy_rain", "waterlogging", "storm") else "moderate",
+                    category=cat.replace('_', ' ').title(),
+                    headline=f"Citizen Ground Truth Observation ({doc.get('status', 'PENDING')})",
+                    description=doc.get("description", ""),
+                    instruction="Citizen observed hazard. Exercise caution and verify route accessibility.",
+                    source="Community Ground Truth",
+                    source_type="community_incident",
+                    location=doc.get("location_name") or resolved_city,
+                    starts_at=iso_time,
+                    is_active=True,
+                )
+                res.alerts.append(comm_item)
+        res.total_alerts = len(res.alerts)
+    except Exception as exc:
+        logger.warning(f"Augmenting community alerts failed: {exc}")
+
+    return res
 
 
 @router.get(

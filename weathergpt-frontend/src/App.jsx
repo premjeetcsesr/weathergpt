@@ -21,10 +21,22 @@ import { CommunityReports } from './pages/CommunityReports';
 import { Auth } from './pages/Auth';
 
 import { AlertToast } from './components/alerts/AlertToast';
+import { SevereWeatherTicker } from './components/alerts/SevereWeatherTicker';
+import { DedicatedAlertsPanel } from './components/alerts/DedicatedAlertsPanel';
 import { useWeather } from './context/WeatherContext';
 
 function AppContent() {
-  const { latestToast, dismissToast, locationReady } = useWeather();
+  const {
+    latestToast,
+    dismissToast,
+    locationReady,
+    alerts,
+    selectedCity,
+    isDedicatedPanelOpen,
+    openDedicatedAlertsPanel,
+    closeDedicatedAlertsPanel,
+    refreshWeather
+  } = useWeather();
 
   if (!locationReady) {
     return <LocationPermissionGate />;
@@ -34,6 +46,22 @@ function AppContent() {
     <div className="min-h-screen flex flex-col bg-[#080d1a] text-slate-100 dark:bg-[#080d1a] dark:text-slate-100">
       {/* Sticky Top Navigation */}
       <Navbar />
+
+      {/* Real-time Severe Weather Warnings Scrolling Ticker (Matching Screenshots 1 & 2) */}
+      <SevereWeatherTicker
+        alerts={alerts}
+        locationName={selectedCity || 'Kanpur'}
+        onOpenDedicatedPanel={openDedicatedAlertsPanel}
+      />
+
+      {/* Dedicated Meteorological Alerts Panel Modal (Matching Screenshot 4) */}
+      <DedicatedAlertsPanel
+        isOpen={isDedicatedPanelOpen}
+        onClose={closeDedicatedAlertsPanel}
+        alerts={alerts}
+        locationName={selectedCity || 'Kanpur'}
+        onRefresh={refreshWeather}
+      />
 
       {/* Real-time WebSocket Alert Toast */}
       <AlertToast alert={latestToast} onDismiss={dismissToast} />
