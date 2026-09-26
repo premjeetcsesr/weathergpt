@@ -1,5 +1,9 @@
 {
   "appId": "com.weathergpt.app",
   "appName": "WeatherGPT",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://weathergpt-ai-india.vercel.app",
+    "cleartext": true
+  }
 }

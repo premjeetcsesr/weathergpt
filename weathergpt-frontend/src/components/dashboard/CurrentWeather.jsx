@@ -55,7 +55,7 @@ export function CurrentWeather() {
 
   if (!weatherData || !weatherData.current) return null;
 
-  const { current, location } = weatherData;
+  const { current, location = {} } = weatherData;
 
   return (
     <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-white via-slate-50 to-brand-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-brand-950/40 border border-slate-200/80 dark:border-slate-800 shadow-card relative overflow-hidden transition-all">

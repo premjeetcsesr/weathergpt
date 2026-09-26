@@ -25,6 +25,9 @@ import { SevereWeatherTicker } from './components/alerts/SevereWeatherTicker';
 import { DedicatedAlertsPanel } from './components/alerts/DedicatedAlertsPanel';
 import { useWeather } from './context/WeatherContext';
 
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 function AppContent() {
   const {
     latestToast,
@@ -37,6 +40,22 @@ function AppContent() {
     closeDedicatedAlertsPanel,
     refreshWeather
   } = useWeather();
+
+  React.useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const permStatus = await LocalNotifications.checkPermissions();
+          if (permStatus.display !== 'granted') {
+            await LocalNotifications.requestPermissions();
+          }
+        } catch (e) {
+          console.warn('Notification permission request failed', e);
+        }
+      }
+    };
+    requestNotificationPermission();
+  }, []);
 
   if (!locationReady) {
     return <LocationPermissionGate />;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   MapPin, 
   Crosshair, 
@@ -140,7 +140,7 @@ export function GoogleWeatherCard() {
 
   if (!weatherData || !weatherData.current) return null;
 
-  const { current, location } = weatherData;
+  const { current, location = {} } = weatherData;
 
   // Compute location header display string
   const locationDisplay = useMemo(() => {

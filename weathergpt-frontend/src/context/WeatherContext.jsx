@@ -11,6 +11,8 @@ import {
 } from '../services/weatherApi';
 import { useAlertWebSocket } from '../services/useAlertWebSocket';
 import { triggerSevereWeatherAlert } from '../services/alertToneService';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 const WeatherContext = createContext();
 
@@ -279,40 +281,41 @@ export function WeatherProvider({ children }) {
       return false;
     };
 
-    if (!navigator.geolocation) {
-      tryIpFallback().then((success) => {
-        if (!success) {
-          setIsLocating(false);
-          setLocationError('Geolocation is not supported by your browser.');
-        }
-      });
-      return;
-    }
-
-    const requestBrowserLocation = (options, allowRetry) => new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => resolve({ position }),
-        (error) => {
-          if (
-            allowRetry &&
-            (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)
-          ) {
-            requestBrowserLocation(
-              { timeout: 20000, enableHighAccuracy: false, maximumAge: 300000 },
-              false
-            ).then(resolve);
-            return;
+    const getPlatformLocation = async () => {
+      try {
+        if (Capacitor.isNativePlatform()) {
+          const permStatus = await Geolocation.checkPermissions();
+          if (permStatus.location !== 'granted') {
+            const reqStatus = await Geolocation.requestPermissions();
+            if (reqStatus.location !== 'granted') {
+              throw new Error('User denied location permission');
+            }
           }
-          resolve({ error });
-        },
-        options
-      );
-    });
+          const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+          return { position };
+        } else {
+          if (!navigator.geolocation) throw new Error('No geolocation in browser');
+          const requestBrowserLocation = (options, allowRetry) => new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (position) => resolve({ position }),
+              (error) => {
+                if (allowRetry && (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)) {
+                  requestBrowserLocation({ timeout: 20000, enableHighAccuracy: false, maximumAge: 300000 }, false).then(resolve);
+                  return;
+                }
+                resolve({ error });
+              },
+              options
+            );
+          });
+          return await requestBrowserLocation({ timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }, true);
+        }
+      } catch (e) {
+        return { error: e };
+      }
+    };
 
-    requestBrowserLocation(
-      { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 },
-      true
-    ).then(async ({ position, error: geoError }) => {
+    getPlatformLocation().then(async ({ position, error: geoError }) => {
       if (position) {
         const { latitude: lat, longitude: lon } = position.coords;
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
@@ -344,7 +347,7 @@ export function WeatherProvider({ children }) {
       }
 
       if (geoError) {
-        console.warn('Browser geolocation failed:', geoError.message);
+        console.warn('Geolocation failed:', geoError.message);
       }
       const fallbackOk = await tryIpFallback();
       if (!fallbackOk) {

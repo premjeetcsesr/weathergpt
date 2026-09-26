@@ -55,7 +55,7 @@ export function SearchBar() {
 
   const locationInfo = weatherData?.location || {
     city: selectedCity,
-    state: getStateForCity(selectedCity) || '',
+    state: getStateForCity(selectedCity || '') || '',
     country: "India",
     lat: 26.4499,
     lon: 80.3319

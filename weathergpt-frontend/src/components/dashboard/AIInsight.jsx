@@ -11,7 +11,7 @@ export function AIInsight() {
 
   if (!weatherData || !weatherData.ai_insight) return null;
 
-  const { ai_insight, location } = weatherData;
+  const { ai_insight, location = {} } = weatherData;
 
   const handleAskGPT = () => {
     navigate('/', {
