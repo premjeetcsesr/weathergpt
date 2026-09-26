@@ -9,9 +9,10 @@ import {
   Navigation, 
   Compass, 
   Globe2,
-  ChevronRight
+  ChevronRight,
+  Crosshair
 } from 'lucide-react';
-import { searchLocations } from '../../services/weatherApi';
+import { searchLocations, getAreaDetailsByCoordinates } from '../../services/weatherApi';
 import { CITY_LOCALITIES_CATALOG, getStateForCity } from '../../data/indianLocations';
 
 // Common popular Indian cities for quick switcher
@@ -45,6 +46,42 @@ export function AreaSelectorModal({
   const [customResults, setCustomResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [isDetectingGpsArea, setIsDetectingGpsArea] = useState(false);
+
+  // Auto-find locality from current live location via weather & geocoding API
+  const handleDetectGpsArea = () => {
+    setIsDetectingGpsArea(true);
+    if (!navigator.geolocation) {
+      setIsDetectingGpsArea(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const details = await getAreaDetailsByCoordinates(lat, lon);
+          if (details) {
+            onSelectArea(details);
+            if (onSwitchCity && details.city) {
+              onSwitchCity(details.city);
+            }
+            onClose();
+          }
+        } catch (e) {
+          console.warn('GPS area detection failed in modal:', e);
+        } finally {
+          setIsDetectingGpsArea(false);
+        }
+      },
+      (err) => {
+        console.warn('GPS location error in modal:', err);
+        setIsDetectingGpsArea(false);
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
+    );
+  };
 
   // Clean and sanitize city name (remove ISP or reverse-lookup anomalies like "Alok Mishra")
   const sanitizedCity = useMemo(() => {
@@ -193,6 +230,27 @@ export function AreaSelectorModal({
               </div>
             </div>
           )}
+        </div>
+
+        {/* GPS Live Area Finder Banner */}
+        <div className="px-4 py-2.5 bg-gradient-to-r from-sky-950/70 via-slate-900 to-slate-900 border-b border-[#1a2c4e] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              <Crosshair className={`w-4 h-4 ${isDetectingGpsArea ? 'animate-spin' : ''}`} />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Find Current Location Area</div>
+              <div className="text-[10px] text-slate-400">Auto-detect exact locality & weather via GPS API</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDetectGpsArea}
+            disabled={isDetectingGpsArea}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-colors shrink-0 shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <span>{isDetectingGpsArea ? 'Finding...' : 'Detect My Area'}</span>
+          </button>
         </div>
 
         {/* Search Bar Input */}

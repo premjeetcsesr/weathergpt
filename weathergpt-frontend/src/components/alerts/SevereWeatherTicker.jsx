@@ -138,23 +138,24 @@ export function SevereWeatherTicker({
     <div
       role="region"
       aria-label="Severe Weather Warnings Ticker"
-      className="w-full bg-[#271207] border-y border-amber-600/40 text-amber-50 px-3 sm:px-5 py-2.5 shadow-lg relative z-40 transition-colors select-none"
+      className="w-full bg-[#271207] border-y border-amber-600/40 text-amber-50 px-2.5 sm:px-5 py-2 shadow-lg relative z-40 transition-colors select-none"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
         {/* Left Side: Shield Icon + Agency Badge + Counter + Scrolling Alert Text */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
           {/* Shield Alert Icon */}
           <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 ring-1 ring-amber-500/40">
-            <ShieldAlert className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-pulse text-amber-400" />
+            <ShieldAlert className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 animate-pulse text-amber-400" />
           </div>
 
           {/* Yellow Alert Advisory Pill (Exact Match to Screenshot 2) */}
-          <span className="shrink-0 px-2 sm:px-2.5 py-0.5 rounded-md bg-[#d97706] text-slate-950 font-black text-[10px] sm:text-xs tracking-wider uppercase shadow-sm">
-            {currentAlert.agency} · {currentAlert.badge}
+          <span className="shrink-0 px-1.5 sm:px-2.5 py-0.5 rounded-md bg-[#d97706] text-slate-950 font-black text-[9px] sm:text-xs tracking-wider uppercase shadow-sm">
+            <span className="sm:hidden">{currentAlert.agency} · ALERT</span>
+            <span className="hidden sm:inline">{currentAlert.agency} · {currentAlert.badge}</span>
           </span>
 
           {/* Page Counter (e.g. 1/2) */}
-          <span className="shrink-0 px-1.5 py-0.5 rounded bg-black/40 text-amber-200/90 font-mono text-[10px] sm:text-xs font-semibold">
+          <span className="shrink-0 px-1 sm:px-1.5 py-0.5 rounded bg-black/40 text-amber-200/90 font-mono text-[9px] sm:text-xs font-semibold">
             {currentIndex + 1}/{activeAlerts.length}
           </span>
 
@@ -164,7 +165,7 @@ export function SevereWeatherTicker({
             className="flex-1 min-w-0 overflow-hidden cursor-pointer group flex items-center gap-1.5"
             title="Click to view full meteorological advisory"
           >
-            <div className="truncate text-xs sm:text-sm text-amber-100/95 font-medium hover:text-white transition-colors">
+            <div className="truncate text-[11px] sm:text-sm text-amber-100/95 font-medium hover:text-white transition-colors">
               <span className="font-extrabold text-white underline decoration-amber-400/50 underline-offset-2">
                 {currentAlert.event}:
               </span>{' '}
@@ -175,12 +176,12 @@ export function SevereWeatherTicker({
 
         {/* Right Side: Controls (< || >), View Full Advisory, Sound Mute, Notification, Close */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Prev Alert Button */}
+          {/* Prev Alert Button - hidden on extra small screens (< 420px) to give priority to headline and advisory */}
           <button
             type="button"
             onClick={handlePrev}
             aria-label="Previous alert"
-            className="p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30"
+            className="hidden xs:flex p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30 min-h-0 h-7 w-7 items-center justify-center"
             title="Previous Warning"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
@@ -191,46 +192,47 @@ export function SevereWeatherTicker({
             type="button"
             onClick={togglePause}
             aria-label={isPaused ? 'Resume ticker' : 'Pause ticker'}
-            className="p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30"
+            className="p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30 min-h-0 h-7 w-7 flex items-center justify-center"
             title={isPaused ? 'Resume Ticker' : 'Pause Ticker'}
           >
-            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            {isPaused ? <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
           </button>
 
-          {/* Next Alert Button */}
+          {/* Next Alert Button - hidden on extra small screens (< 420px) */}
           <button
             type="button"
             onClick={handleNext}
             aria-label="Next alert"
-            className="p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30"
+            className="hidden xs:flex p-1 sm:p-1.5 rounded-md bg-black/40 hover:bg-black/60 text-amber-200 hover:text-white transition-colors border border-amber-600/30 min-h-0 h-7 w-7 items-center justify-center"
             title="Next Warning"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
 
-          {/* View Full Advisory Button (Exact Match to Screenshot 2) */}
+          {/* View Full Advisory Button (Exact Match to Screenshot 2, compact on mobile) */}
           <button
             type="button"
             onClick={onOpenDedicatedPanel}
-            className="px-2.5 sm:px-3.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-slate-900 font-extrabold text-xs tracking-tight shadow-md hover:shadow-lg flex items-center gap-1 transition-all"
+            className="px-2 sm:px-3.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-tight shadow-md hover:shadow-lg flex items-center gap-1 transition-all min-h-0 h-7"
           >
-            <span>View Full Advisory</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-900" />
+            <span className="hidden sm:inline">View Full Advisory</span>
+            <span className="sm:hidden">Advisory</span>
+            <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-900" />
           </button>
 
-          {/* Siren Audio Mute/Unmute Toggle ("kuch log usko mute kar sakte hai") */}
+          {/* Siren Audio Mute/Unmute Toggle */}
           <button
             type="button"
             onClick={toggleSound}
             aria-label={soundMuted ? 'Unmute alert siren' : 'Mute alert siren'}
-            className={`p-1.5 rounded-lg border transition-colors ${
+            className={`p-1 sm:p-1.5 rounded-lg border transition-colors min-h-0 h-7 w-7 flex items-center justify-center ${
               soundMuted
                 ? 'bg-red-950/60 border-red-500/40 text-red-300 hover:bg-red-900/60'
                 : 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
             }`}
             title={soundMuted ? 'Alert Sound is Muted (Click to Unmute)' : 'Alert Sound is Active (Click to Mute)'}
           >
-            {soundMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 animate-pulse" />}
+            {soundMuted ? <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse" />}
           </button>
 
           {/* Dismiss / Close Ticker */}
@@ -238,7 +240,7 @@ export function SevereWeatherTicker({
             type="button"
             onClick={() => setIsDismissed(true)}
             aria-label="Dismiss alert ticker"
-            className="p-1 sm:p-1.5 rounded-md text-amber-300/70 hover:text-white hover:bg-black/30 transition-colors ml-0.5"
+            className="p-1 rounded-md text-amber-300/70 hover:text-white hover:bg-black/30 transition-colors min-h-0 h-7 w-7 flex items-center justify-center"
             title="Dismiss Ticker"
           >
             <X className="w-3.5 h-3.5" />

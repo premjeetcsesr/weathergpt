@@ -4,6 +4,7 @@ import {
   getForecast,
   getWeatherAlerts,
   getCityByCoordinates,
+  getAreaDetailsByCoordinates,
   fetchSavedLocations,
   saveLocationToBackend,
   deleteSavedLocationFromBackend,
@@ -318,7 +319,14 @@ export function WeatherProvider({ children }) {
           geoError = { code: 2, message: 'Invalid coordinates returned by the device.' };
         } else {
           try {
-            const city = await getCityByCoordinates(lat, lon);
+            const areaDetails = await getAreaDetailsByCoordinates(lat, lon);
+            if (areaDetails) {
+              try {
+                localStorage.setItem('weathergpt_selected_area', JSON.stringify(areaDetails));
+                window.dispatchEvent(new CustomEvent('weathergpt-area-changed', { detail: areaDetails }));
+              } catch {}
+            }
+            const city = areaDetails?.city || await getCityByCoordinates(lat, lon);
             const loaded = await loadCityWeather({
               lat,
               lon,

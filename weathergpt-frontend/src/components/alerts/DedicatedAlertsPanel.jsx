@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Radio,
   Volume2,
@@ -154,12 +155,12 @@ export function DedicatedAlertsPanel({
     setTimeout(() => setNotificationTestSent(false), 3500);
   };
 
-  return (
+  const modalContent = (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Dedicated Severe Weather Alerts Panel"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto"
     >
       <div className="relative bg-[#0c1424] border border-slate-700/80 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col text-slate-100">
         {/* Top Header matching Screenshot 4: ((o)) IMD LIVE TELEMETRY Verified Meteorological Authority */}
@@ -186,27 +187,36 @@ export function DedicatedAlertsPanel({
           </div>
 
           {/* Header Action Controls: Test Siren Tone, Mute Toggle, Refresh, Close */}
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 self-end sm:self-auto">
             {/* Test Siren Tone Button */}
             <button
               type="button"
               onClick={handleTestSiren}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm min-h-0 ${
                 isTestingSiren
                   ? 'bg-red-500/20 border-red-500 text-red-300 ring-2 ring-red-500/40 animate-pulse'
                   : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
               }`}
               title="Test Emergency Alert Audio Siren"
             >
-              <Volume2 className={`w-4 h-4 ${isTestingSiren ? 'text-red-400 animate-spin' : 'text-amber-400'}`} />
-              <span>{isTestingSiren ? 'Playing Siren...' : 'Test Siren Tone'}</span>
+              <Volume2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTestingSiren ? 'text-red-400 animate-spin' : 'text-amber-400'}`} />
+              <span>
+                {isTestingSiren ? (
+                  'Playing...'
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Test Siren Tone</span>
+                    <span className="sm:hidden">Test Siren</span>
+                  </>
+                )}
+              </span>
             </button>
 
             {/* Mute/Unmute Quick Toggle */}
             <button
               type="button"
               onClick={handleToggleMute}
-              className={`p-2 rounded-xl border transition-colors ${
+              className={`p-1.5 sm:p-2 rounded-xl border transition-colors min-h-0 ${
                 soundMuted
                   ? 'bg-red-950/60 border-red-500/40 text-red-300 hover:bg-red-900/60'
                   : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
@@ -221,7 +231,7 @@ export function DedicatedAlertsPanel({
               <button
                 type="button"
                 onClick={onRefresh}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-colors"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-colors min-h-0"
                 title="Refresh Live Warnings"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -232,7 +242,7 @@ export function DedicatedAlertsPanel({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white transition-colors min-h-0"
               title="Close Panel"
             >
               <X className="w-4 h-4" />
@@ -444,4 +454,6 @@ export function DedicatedAlertsPanel({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

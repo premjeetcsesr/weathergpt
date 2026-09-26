@@ -8,7 +8,8 @@ import {
   Check, 
   Wind as WindIcon,
   Droplets,
-  CloudRain
+  CloudRain,
+  Compass
 } from 'lucide-react';
 import {
   AreaChart,
@@ -23,6 +24,7 @@ import { useWeather } from '../../context/WeatherContext';
 import { GoogleWeatherIcon } from './GoogleWeatherIcon';
 import { AreaSelectorModal } from './AreaSelectorModal';
 import { getStateForCity } from '../../data/indianLocations';
+import { getAreaDetailsByCoordinates } from '../../services/weatherApi';
 
 /**
  * Format hourly item to am/pm time label (e.g. "9 am", "12 pm")
@@ -83,6 +85,57 @@ export function GoogleWeatherCard() {
     } else {
       localStorage.removeItem('weathergpt_selected_area');
     }
+  };
+
+  useEffect(() => {
+    const handleAreaChanged = (e) => {
+      if (e.detail) {
+        setSelectedArea(e.detail);
+      }
+    };
+    window.addEventListener('weathergpt-area-changed', handleAreaChanged);
+    return () => window.removeEventListener('weathergpt-area-changed', handleAreaChanged);
+  }, []);
+
+  const [isDetectingArea, setIsDetectingArea] = useState(false);
+
+  // Auto-find area from current live location using weather & reverse geocoding API
+  const handleDetectCurrentArea = async () => {
+    setIsDetectingArea(true);
+    if (!navigator.geolocation) {
+      useCurrentLocation();
+      setIsDetectingArea(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const areaDetails = await getAreaDetailsByCoordinates(lat, lon);
+          if (areaDetails) {
+            handleSelectArea(areaDetails);
+            if (areaDetails.city) {
+              searchCity(areaDetails.city);
+            }
+          } else {
+            useCurrentLocation();
+          }
+        } catch (e) {
+          console.warn('Detect area error:', e);
+          useCurrentLocation();
+        } finally {
+          setIsDetectingArea(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        useCurrentLocation();
+        setIsDetectingArea(false);
+      },
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
+    );
   };
 
   if (!weatherData || !weatherData.current) return null;
@@ -236,26 +289,48 @@ export function GoogleWeatherCard() {
         {/* Location title + Choose area */}
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <MapPin className="w-5 h-5 text-white shrink-0" />
-          <div className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 flex-wrap">
+          <div className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
             <span>{locationDisplay}</span>
             <span className="text-[#9aa0a6] font-normal mx-0.5">·</span>
             <button
               type="button"
               onClick={() => setAreaModalOpen(true)}
-              className="text-[#8ab4f8] hover:underline cursor-pointer font-normal text-sm sm:text-base inline-flex items-center transition-colors"
+              className="px-2.5 py-1 rounded-full bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/40 text-sky-400 hover:text-sky-300 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 transition-all shadow-sm"
+              title="Click to Choose area or detect current location"
             >
-              Choose area
+              <Compass className="w-3.5 h-3.5" />
+              <span>Choose area</span>
             </button>
           </div>
         </div>
 
-        {/* Action buttons: "Use precise location" & Three dots */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Action buttons: "Auto-Detect Area" & "Use precise location" & Three dots */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={handleDetectCurrentArea}
+            disabled={isDetectingArea || isLocating}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-emerald-500/40 hover:border-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-all shadow-sm disabled:opacity-50 min-h-0"
+            title="Auto-detect exact area from current location via weather API"
+          >
+            <Crosshair className={`w-3.5 h-3.5 text-emerald-400 ${isDetectingArea ? 'animate-spin' : ''}`} />
+            <span>
+              {isDetectingArea ? (
+                'Finding...'
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Auto-Detect Area</span>
+                  <span className="sm:hidden">Auto-Detect</span>
+                </>
+              )}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={useCurrentLocation}
             disabled={isLocating}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#5f6368] hover:border-[#8ab4f8] bg-[#303134]/50 hover:bg-[#303134] text-xs font-medium text-[#8ab4f8] transition-all disabled:opacity-50"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-[#5f6368] hover:border-[#8ab4f8] bg-[#303134]/50 hover:bg-[#303134] text-xs font-medium text-[#8ab4f8] transition-all disabled:opacity-50 min-h-0"
             title="Use device precise GPS location"
           >
             <Crosshair className={`w-3.5 h-3.5 text-[#8ab4f8] ${isLocating ? 'animate-spin' : ''}`} />

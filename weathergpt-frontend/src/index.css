@@ -19,6 +19,35 @@
 
   * {
     border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-width: 0;
+    min-height: 100%;
+    width: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
   }
 }
 
@@ -102,6 +131,33 @@
 
 .dark .leaflet-popup-tip {
   background: #0f172a !important;
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overscroll-behavior-y: contain;
+  }
+
+  button:not(.min-h-0),
+  [role='button']:not(.min-h-0),
+  a:not(.min-h-0) {
+    min-height: 40px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents auto-zoom in Android WebViews */
+  }
+
+  .leaflet-control-zoom {
+    margin-bottom: 0 !important;
+  }
+
+  .leaflet-control-attribution {
+    font-size: 9px;
+  }
 }
 
 .leaflet-popup-content {

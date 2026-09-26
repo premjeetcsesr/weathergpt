@@ -519,6 +519,89 @@ export async function getCityByCoordinates(lat, lon) {
 }
 
 /**
+ * Reverse geocode exact locality/neighborhood area from coordinates using weather & geocoding telemetry
+ * @param {number} lat
+ * @param {number} lon
+ */
+export async function getAreaDetailsByCoordinates(lat, lon) {
+  let cityName = '';
+  let stateName = '';
+  let localityName = '';
+  let postcode = '';
+
+  // 1. Try BigDataCloud Client-side Reverse Geocoding API (Fast, free, precise locality/suburb)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const bdcRes = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (bdcRes.ok) {
+      const bdcData = await bdcRes.json();
+      localityName = bdcData.locality || bdcData.subLocality || bdcData.neighbourhood || '';
+      cityName = bdcData.city || bdcData.principalSubdivision || '';
+      stateName = bdcData.principalSubdivision || '';
+      postcode = bdcData.postcode || '';
+    }
+  } catch (e) {
+    console.debug('BigDataCloud reverse geocode notice:', e);
+  }
+
+  // 2. Cross-reference with backend current weather endpoint
+  try {
+    const url = `${ENDPOINTS.CURRENT_WEATHER}?lat=${lat}&lon=${lon}`;
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.location?.city) {
+        if (!cityName) cityName = data.location.city;
+        if (!stateName && data.location.state) stateName = data.location.state;
+      }
+    }
+  } catch (e) {
+    console.debug('Backend current weather location notice:', e);
+  }
+
+  // 3. Fallback to OpenStreetMap Nominatim if locality is still missing
+  if (!localityName) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const nomRes = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16&addressdetails=1`,
+        { signal: controller.signal, headers: { 'Accept-Language': 'en' } }
+      );
+      clearTimeout(timeoutId);
+      if (nomRes.ok) {
+        const nomData = await nomRes.json();
+        const addr = nomData.address || {};
+        localityName = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.commercial || addr.village || addr.town || '';
+        if (!cityName) cityName = addr.city || addr.town || addr.county || addr.district || '';
+        if (!stateName) stateName = addr.state || '';
+        if (!postcode) postcode = addr.postcode || '';
+      }
+    } catch (e) {
+      console.debug('Nominatim reverse geocode notice:', e);
+    }
+  }
+
+  const finalCity = (cityName || 'Kanpur').trim();
+  const finalAreaName = (localityName || finalCity).trim();
+
+  return {
+    name: finalAreaName,
+    city: finalCity,
+    state: stateName,
+    pincode: postcode,
+    lat,
+    lon,
+    tag: 'Live GPS Area'
+  };
+}
+
+/**
  * Fetch user saved locations from MongoDB backend
  */
 export async function fetchSavedLocations() {

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   MapPin,
@@ -235,8 +236,8 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto">
       <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
@@ -264,11 +265,11 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
-          {/* Important Disclaimers */}
-          <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-            <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          {/* AI Oracle Auto-Verification Banner */}
+          <div className="p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+            <span className="text-base shrink-0">✨</span>
             <p>
-              <strong>Community Report:</strong> Citizen observations are moderated before public display. Never use this for emergency distress calls (Dial 112).
+              <strong className="text-amber-900 dark:text-amber-200">AI Weather Oracle Active:</strong> Reports are automatically verified using AI photo analysis, GPS lock, and live Doppler radar feeds so your report appears live immediately.
             </p>
           </div>
 
@@ -540,4 +541,6 @@ export function ReportModal({ isOpen, onClose, onSuccess, initialCoordinates = n
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
