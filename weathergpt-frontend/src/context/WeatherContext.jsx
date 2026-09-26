@@ -118,7 +118,7 @@ export function WeatherProvider({ children }) {
       setAlerts([]);
       setLoading(false);
       setError('Search for a city or allow location access to load live weather.');
-      return;
+      return false;
     }
     setLoading(true);
     setError(null);
@@ -208,9 +208,11 @@ export function WeatherProvider({ children }) {
       } else {
         setAlerts([]);
       }
+      return true;
     } catch (err) {
       console.error('Weather load error:', err);
       setError(`Could not find weather records for "${activeCity || 'selected location'}". Please check spelling or use your live location.`);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -236,7 +238,7 @@ export function WeatherProvider({ children }) {
     });
   };
 
-  // Browser Geolocation with IP Fallback
+  // Browser Geolocation with IP fallback
   const useCurrentLocation = () => {
     setIsLocating(true);
     setLocationError(null);
@@ -262,9 +264,11 @@ export function WeatherProvider({ children }) {
             const lon = parseFloat(data.longitude || data.lon);
             const city = data.city || data.region || 'Kanpur';
             if (!isNaN(lat) && !isNaN(lon)) {
-              await loadCityWeather({ lat, lon, city });
-              setIsLocating(false);
-              return true;
+              const loaded = await loadCityWeather({ lat, lon, city });
+              if (loaded) {
+                setIsLocating(false);
+                return true;
+              }
             }
           }
         } catch (e) {
@@ -284,38 +288,67 @@ export function WeatherProvider({ children }) {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          await loadCityWeather({ lat, lon });
-        } catch (err) {
-          console.error('GPS coordinates weather fetch error:', err);
-          const fallbackOk = await tryIpFallback();
-          if (!fallbackOk) {
-            setLocationError('Could not determine your live location weather.');
+    const requestBrowserLocation = (options, allowRetry) => new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve({ position }),
+        (error) => {
+          if (
+            allowRetry &&
+            (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)
+          ) {
+            requestBrowserLocation(
+              { timeout: 20000, enableHighAccuracy: false, maximumAge: 300000 },
+              false
+            ).then(resolve);
+            return;
           }
-        } finally {
-          setIsLocating(false);
+          resolve({ error });
+        },
+        options
+      );
+    });
+
+    requestBrowserLocation(
+      { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 },
+      true
+    ).then(async ({ position, error: geoError }) => {
+      if (position) {
+        const { latitude: lat, longitude: lon } = position.coords;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          geoError = { code: 2, message: 'Invalid coordinates returned by the device.' };
+        } else {
+          try {
+            const city = await getCityByCoordinates(lat, lon);
+            const loaded = await loadCityWeather({
+              lat,
+              lon,
+              ...(city ? { city } : {}),
+            });
+            if (loaded) {
+              setLocationError(null);
+              setIsLocating(false);
+              return;
+            }
+          } catch (err) {
+            console.error('GPS coordinates weather fetch error:', err);
+          }
         }
-      },
-      async (geoError) => {
-        console.warn('Browser geolocation denied or timed out:', geoError.message);
-        const fallbackOk = await tryIpFallback();
-        if (!fallbackOk) {
-          setIsLocating(false);
-          setLocationError(
-            geoError.code === 1
-              ? 'Location permission denied. Please enter your city manually.'
-              : 'Could not obtain GPS lock. Falling back to default city...'
-          );
-          // Safe fallback so user screen never stays broken
-          loadCityWeather('Kanpur');
-        }
-      },
-      { timeout: 12000, enableHighAccuracy: true, maximumAge: 60000 }
-    );
+      }
+
+      if (geoError) {
+        console.warn('Browser geolocation failed:', geoError.message);
+      }
+      const fallbackOk = await tryIpFallback();
+      if (!fallbackOk) {
+        setIsLocating(false);
+        setLocationError(
+          geoError?.code === 1
+            ? 'Location permission denied. Please allow location access in your browser or Android app settings.'
+            : 'Could not obtain your current location. Check device location services and try again.'
+        );
+      }
+    });
+
   };
 
   // Temperature unit conversion helper
